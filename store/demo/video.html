@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Página de vídeo de ejemplo</title>
+<style>
+  body { margin: 0; background: #0f1115; color: #e7e9ee; font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 28px; background: #171a21; border-bottom: 1px solid #262a33; }
+  header b { font-size: 18px; }
+  header span { color: #8b93a3; }
+  main { max-width: 1000px; margin: 22px auto; padding: 0 20px; }
+  video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 10px; display: block; }
+  h1 { font-size: 20px; margin: 16px 0 4px; }
+  p { color: #9aa3b2; margin: 0; }
+</style>
+</head>
+<body>
+<header><b>Vídeos de ejemplo</b><span>Página de demostración</span></header>
+<main>
+  <video id="v" controls muted autoplay playsinline></video>
+  <h1>Big Buck Bunny</h1>
+  <p>Película de animación libre de la Blender Foundation (CC BY 3.0) · Transmisión HLS con varias calidades</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<script>
+  var src = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
+  var v = document.getElementById("v");
+  if (window.Hls && Hls.isSupported()) { var h = new Hls(); h.loadSource(src); h.attachMedia(v); }
+  else v.src = src;
+</script>
+</body>
+</html>

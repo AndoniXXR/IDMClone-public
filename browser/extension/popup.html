@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 13px "Segoe UI", sans-serif; width: 320px; margin: 0; padding: 12px; color: #1d2433; background: #fff; }
+  h1 { font-size: 14px; margin: 0 0 10px; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; gap: 6px; }
+  textarea { width: 100%; height: 70px; font: 11px Consolas, monospace; box-sizing: border-box; }
+  textarea[readonly] { background: #f6f8fb; color: #3b4352; }
+  button { font: 12px "Segoe UI"; padding: 5px 10px; cursor: pointer; }
+  .status { margin-top: 8px; padding: 6px 8px; border-radius: 4px; background: #f1f4f9; font-size: 12px; }
+  .ok { color: #1a7f37; } .bad { color: #b42318; } .warn { color: #9a6700; }
+  label { font-size: 12px; }
+  .muted { color: #5b6475; font-size: 11px; margin-top: 6px; }
+  .note { font-size: 11px; color: #1d4ed8; margin: 6px 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <!-- Textos: _locales (data-i18n, ver popup.js); el español de aquí es el de reserva. -->
+  <h1 data-i18n="extName">IDMClone Integration</h1>
+  <div class="row">
+    <label><input type="checkbox" id="enabled"> <span data-i18n="popupCapture">Capturar descargas automáticamente</span></label>
+  </div>
+  <div class="row">
+    <label><span data-i18n="popupMinBefore">No capturar archivos de menos de</span> <input type="number" id="minSize" min="0" style="width:70px"> <span data-i18n="popupMinAfter">KB</span></label>
+  </div>
+  <div id="offNote" class="note warn" hidden></div>
+  <div id="fromApp" class="note" hidden data-i18n="popupFromApp">Los tipos de archivo y los sitios excluidos son los de IDMClone (Opciones &gt; Tipos de archivo).</div>
+  <div>
+    <div class="muted" data-i18n="popupExtsLabel">Tipos de archivo que descarga IDMClone (como en IDM; admite comodines, p. ej. r0*):</div>
+    <textarea id="exts"></textarea>
+  </div>
+  <div>
+    <div class="muted" data-i18n="popupExcludeLabel">No descargar automáticamente desde (uno por línea, p. ej. *.ejemplo.com/*.mp3):</div>
+    <textarea id="exclude"></textarea>
+  </div>
+  <div class="row">
+    <button id="defaults" data-i18n="popupDefaults">Valores de IDM</button>
+    <button id="options" hidden data-i18n="popupOptions">Editar en IDMClone</button>
+    <button id="save" data-i18n="popupSave">Guardar</button>
+    <button id="test" data-i18n="popupTest">Probar conexión</button>
+  </div>
+  <div id="status" class="status">…</div>
+  <script src="logic.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

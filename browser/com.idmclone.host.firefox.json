@@ -1,0 +1,9 @@
+{
+    "name":  "com.idmclone.host",
+    "description":  "IDMClone native messaging host",
+    "path":  "C:\\Program Files\\IDMClone\\IDMClone.exe",
+    "type":  "stdio",
+    "allowed_extensions":  [
+                               "idmclone@idmclone.local"
+                           ]
+}

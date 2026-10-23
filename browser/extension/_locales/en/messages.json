@@ -1,0 +1,349 @@
+{
+  "extName": {
+    "message": "IDMClone Integration"
+  },
+  "extDesc": {
+    "message": "Sends browser downloads and videos to IDMClone, the download manager for Windows."
+  },
+  "offReason": {
+    "message": "IDMClone does not capture downloads from $BROWSER$ (IDMClone Options > General).",
+    "placeholders": {
+      "browser": {
+        "content": "$1"
+      }
+    }
+  },
+  "thisBrowser": {
+    "message": "this browser"
+  },
+  "titleError": {
+    "message": "[ERROR]"
+  },
+  "titleOff": {
+    "message": "[DISABLED]"
+  },
+  "hostClosed": {
+    "message": "the host closed"
+  },
+  "hostUnavailable": {
+    "message": "Native host not available: $ERR$. Did you run install.ps1?",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "hostTimeout": {
+    "message": "IDMClone did not respond in time."
+  },
+  "notifyUnavailable": {
+    "message": "IDMClone not available"
+  },
+  "notifyStaysInBrowser": {
+    "message": "The download continues in the browser"
+  },
+  "idmNotAvailable": {
+    "message": "IDMClone is not available."
+  },
+  "cantReadLinks": {
+    "message": "Cannot read the links of this page: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "selectionNoLinks": {
+    "message": "The selection has no links."
+  },
+  "pageNoLinks": {
+    "message": "The page has no links."
+  },
+  "linkNotDownloadable": {
+    "message": "That link cannot be downloaded ($SCHEME$).",
+    "placeholders": {
+      "scheme": {
+        "content": "$1"
+      }
+    }
+  },
+  "menuDownload": {
+    "message": "Download with IDMClone"
+  },
+  "menuSelected": {
+    "message": "Download selected links with IDMClone"
+  },
+  "menuAll": {
+    "message": "Download all links with IDMClone"
+  },
+  "panelDownloadVideo": {
+    "message": "Download this video"
+  },
+  "panelDownloadAudio": {
+    "message": "Download this audio"
+  },
+  "panelDownloadVideoTitle": {
+    "message": "Download this video with IDMClone"
+  },
+  "panelDownloadAudioTitle": {
+    "message": "Download this audio with IDMClone"
+  },
+  "panelAria": {
+    "message": "IDMClone download panel"
+  },
+  "panelAbout": {
+    "message": "About this panel"
+  },
+  "panelClose": {
+    "message": "Close"
+  },
+  "panelHeadVideo": {
+    "message": "video"
+  },
+  "panelHeadAudio": {
+    "message": "audio"
+  },
+  "panelLive": {
+    "message": ", live (recorded until you stop it)"
+  },
+  "panelDuration": {
+    "message": ", duration $DUR$",
+    "placeholders": {
+      "dur": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelDrm": {
+    "message": "IDMClone cannot download this content because it is protected (DRM)."
+  },
+  "panelAboutText": {
+    "message": "This is the IDMClone download panel.\nIt can be customized or disabled in IDMClone > Options > General."
+  },
+  "panelSending": {
+    "message": "Sending to IDMClone..."
+  },
+  "panelSendFailReload": {
+    "message": "Could not send: $ERR$. Reload the page.",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSendFailUpdated": {
+    "message": "Could not send: $ERR$. If you just installed or reloaded the extension, reload the page.",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSent": {
+    "message": "Sent to IDMClone"
+  },
+  "panelNoReply": {
+    "message": "IDMClone did not respond."
+  },
+  "selClose": {
+    "message": "Close (do not show it again on this page)"
+  },
+  "selAboutText": {
+    "message": "This is the IDMClone download panel for selected links.\nIt can be customized or disabled in IDMClone > Options > General."
+  },
+  "selSentOne": {
+    "message": "Sent to IDMClone (1 link)"
+  },
+  "selSentMany": {
+    "message": "Sent to IDMClone ($N$ links)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "mediaAudioOnly": {
+    "message": "audio only"
+  },
+  "popupCapture": {
+    "message": "Capture downloads automatically"
+  },
+  "popupMinBefore": {
+    "message": "Do not capture files smaller than"
+  },
+  "popupMinAfter": {
+    "message": "KB"
+  },
+  "popupFromApp": {
+    "message": "File types and excluded sites come from IDMClone (Options > File types)."
+  },
+  "popupExtsLabel": {
+    "message": "File types that IDMClone downloads (as in IDM; wildcards allowed, e.g. r0*):"
+  },
+  "popupExcludeLabel": {
+    "message": "Do not download automatically from (one per line, e.g. *.example.com/*.mp3):"
+  },
+  "popupDefaults": {
+    "message": "IDM defaults"
+  },
+  "popupOptions": {
+    "message": "Edit in IDMClone"
+  },
+  "popupSave": {
+    "message": "Save"
+  },
+  "popupTest": {
+    "message": "Test connection"
+  },
+  "popupOffDefault": {
+    "message": "IDMClone does not capture downloads from this browser."
+  },
+  "popupReady": {
+    "message": "Ready."
+  },
+  "popupDefaultsLoaded": {
+    "message": "IDM defaults loaded. Click Save to apply them."
+  },
+  "popupSaved": {
+    "message": "Saved."
+  },
+  "popupOpening": {
+    "message": "Opening IDMClone options…"
+  },
+  "popupOptionsOpened": {
+    "message": "Change the lists in IDMClone and reopen this panel."
+  },
+  "popupOptionsFail": {
+    "message": "Could not open IDMClone."
+  },
+  "popupTesting": {
+    "message": "Testing…"
+  },
+  "popupError": {
+    "message": "Error: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupNoHost": {
+    "message": "Could not contact the host. Did you run install.ps1?"
+  },
+  "popupConnected": {
+    "message": "Connected: the host responds and IDMClone is open."
+  },
+  "popupHostOnly": {
+    "message": "The host responds. IDMClone is closed: it will open by itself when a download is captured."
+  },
+  "subtitleItem": {
+    "message": "Subtitles: $NAME$ ($FORMAT$)",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "format": {
+        "content": "$2"
+      }
+    }
+  },
+  "subtitleNoLang": {
+    "message": "no language"
+  },
+  "subtitleNoUrl": {
+    "message": "These subtitles do not have an address IDMClone can download."
+  },
+  "langEs": {
+    "message": "Spanish"
+  },
+  "langEn": {
+    "message": "English"
+  },
+  "langFr": {
+    "message": "French"
+  },
+  "langDe": {
+    "message": "German"
+  },
+  "langIt": {
+    "message": "Italian"
+  },
+  "langPt": {
+    "message": "Portuguese"
+  },
+  "langCa": {
+    "message": "Catalan"
+  },
+  "langGl": {
+    "message": "Galician"
+  },
+  "langEu": {
+    "message": "Basque"
+  },
+  "langNl": {
+    "message": "Dutch"
+  },
+  "langRu": {
+    "message": "Russian"
+  },
+  "langJa": {
+    "message": "Japanese"
+  },
+  "langZh": {
+    "message": "Chinese"
+  },
+  "langKo": {
+    "message": "Korean"
+  },
+  "langAr": {
+    "message": "Arabic"
+  },
+  "langPl": {
+    "message": "Polish"
+  },
+  "langTr": {
+    "message": "Turkish"
+  },
+  "langSv": {
+    "message": "Swedish"
+  },
+  "langNo": {
+    "message": "Norwegian"
+  },
+  "langDa": {
+    "message": "Danish"
+  },
+  "langFi": {
+    "message": "Finnish"
+  },
+  "langEl": {
+    "message": "Greek"
+  },
+  "langHe": {
+    "message": "Hebrew"
+  },
+  "langHi": {
+    "message": "Hindi"
+  },
+  "langCs": {
+    "message": "Czech"
+  },
+  "langHu": {
+    "message": "Hungarian"
+  },
+  "langRo": {
+    "message": "Romanian"
+  },
+  "langUk": {
+    "message": "Ukrainian"
+  },
+  "langId": {
+    "message": "Indonesian"
+  },
+  "langTh": {
+    "message": "Thai"
+  },
+  "langVi": {
+    "message": "Vietnamese"
+  }
+}

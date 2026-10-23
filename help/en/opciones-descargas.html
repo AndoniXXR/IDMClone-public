@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Options: Downloads - IDMClone</title>
+<link rel="stylesheet" href="../ayuda.css">
+</head>
+<body>
+<p class="nav"><a href="index.html">Help contents</a></p>
+<h1>Options: Downloads</h1>
+<ul>
+<li><b>Customize "Download progress" window</b> (<b>Edit...</b>): whether the progress window is shown, opens minimized or is
+not shown, which tabs it has ("Speed limiter", "Options on completion") and whether each one has the "Hide tab" button.
+See <a href="progreso.html">the progress window</a>.</li>
+<li><b>Show start download dialog</b>: the "Download file info" window (name, folder, category, "Download later").</li>
+<li><b>Don't start downloading, just add files to the queue</b> (only without the start dialog): what comes from the
+browser, the clipboard, Add URL or a dropped link does not start; it is added to the main queue, without a progress
+window, and a notification says so. It is downloaded when the main queue runs.</li>
+<li><b>Show download complete dialog</b>: the notice when finished (not shown for downloads made by a queue).</li>
+<li><b>Start downloading while the "Download File Info" window is shown</b>: it starts while you decide (needs the
+temporary directory).</li>
+<li><b>Queue selection panels</b>: ask which queue to use for "Download later" and for batch downloads.</li>
+<li><b>Ignore file date changes when resuming a download</b>: for servers that change the date on every request. Only the
+size is checked: if the file really changed with the same size, it could end up damaged.</li>
+<li><b>Ask for confirmation before deleting downloads from the list</b>, <b>If a duplicate link is added</b> (ask, number, overwrite or resume) and the
+<b>Agent</b> (user agent) for downloads added by hand.</li>
+<li><b>Virus scanning settings</b>: the antivirus that scans each finished file; <code>[File]</code> is the path.</li>
+</ul>
+</body>
+</html>

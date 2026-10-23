@@ -1,0 +1,349 @@
+{
+  "extName": {
+    "message": "IDMClone Integration"
+  },
+  "extDesc": {
+    "message": "将浏览器中的下载和视频发送到 IDMClone（Windows 下载管理器）。"
+  },
+  "offReason": {
+    "message": "IDMClone 不捕获来自 $BROWSER$ 的下载（IDMClone 选项 > 常规）。",
+    "placeholders": {
+      "browser": {
+        "content": "$1"
+      }
+    }
+  },
+  "thisBrowser": {
+    "message": "此浏览器"
+  },
+  "titleError": {
+    "message": "[错误]"
+  },
+  "titleOff": {
+    "message": "[已停用]"
+  },
+  "hostClosed": {
+    "message": "主机已关闭"
+  },
+  "hostUnavailable": {
+    "message": "本机主机不可用：$ERR$。是否已运行 install.ps1？",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "hostTimeout": {
+    "message": "IDMClone 未及时响应。"
+  },
+  "notifyUnavailable": {
+    "message": "IDMClone 不可用"
+  },
+  "notifyStaysInBrowser": {
+    "message": "下载将继续在浏览器中进行"
+  },
+  "idmNotAvailable": {
+    "message": "IDMClone 不可用。"
+  },
+  "cantReadLinks": {
+    "message": "无法读取此页面的链接：$ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "selectionNoLinks": {
+    "message": "所选内容中没有链接。"
+  },
+  "pageNoLinks": {
+    "message": "此页面没有链接。"
+  },
+  "linkNotDownloadable": {
+    "message": "无法下载该链接（$SCHEME$）。",
+    "placeholders": {
+      "scheme": {
+        "content": "$1"
+      }
+    }
+  },
+  "menuDownload": {
+    "message": "使用 IDMClone 下载"
+  },
+  "menuSelected": {
+    "message": "使用 IDMClone 下载所选链接"
+  },
+  "menuAll": {
+    "message": "使用 IDMClone 下载所有链接"
+  },
+  "panelDownloadVideo": {
+    "message": "下载此视频"
+  },
+  "panelDownloadAudio": {
+    "message": "下载此音频"
+  },
+  "panelDownloadVideoTitle": {
+    "message": "使用 IDMClone 下载此视频"
+  },
+  "panelDownloadAudioTitle": {
+    "message": "使用 IDMClone 下载此音频"
+  },
+  "panelAria": {
+    "message": "IDMClone 下载面板"
+  },
+  "panelAbout": {
+    "message": "关于此面板"
+  },
+  "panelClose": {
+    "message": "关闭"
+  },
+  "panelHeadVideo": {
+    "message": "视频"
+  },
+  "panelHeadAudio": {
+    "message": "音频"
+  },
+  "panelLive": {
+    "message": "，直播（录制直到您停止）"
+  },
+  "panelDuration": {
+    "message": "，时长 $DUR$",
+    "placeholders": {
+      "dur": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelDrm": {
+    "message": "此内容受保护 (DRM)，IDMClone 无法下载。"
+  },
+  "panelAboutText": {
+    "message": "这是 IDMClone 下载面板。\n可以在 IDMClone > 选项 > 常规 中自定义或停用。"
+  },
+  "panelSending": {
+    "message": "正在发送到 IDMClone..."
+  },
+  "panelSendFailReload": {
+    "message": "无法发送：$ERR$。请重新加载页面。",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSendFailUpdated": {
+    "message": "无法发送：$ERR$。如果刚刚安装或重新加载了扩展，请重新加载页面。",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSent": {
+    "message": "已发送到 IDMClone"
+  },
+  "panelNoReply": {
+    "message": "IDMClone 没有响应。"
+  },
+  "selClose": {
+    "message": "关闭（在此页面上不再显示）"
+  },
+  "selAboutText": {
+    "message": "这是用于所选链接的 IDMClone 下载面板。\n可以在 IDMClone > 选项 > 常规 中自定义或停用。"
+  },
+  "selSentOne": {
+    "message": "已发送到 IDMClone（1 个链接）"
+  },
+  "selSentMany": {
+    "message": "已发送到 IDMClone（$N$ 个链接）",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "mediaAudioOnly": {
+    "message": "仅音频"
+  },
+  "popupCapture": {
+    "message": "自动捕获下载"
+  },
+  "popupMinBefore": {
+    "message": "不捕获小于"
+  },
+  "popupMinAfter": {
+    "message": "KB 的文件"
+  },
+  "popupFromApp": {
+    "message": "文件类型和排除的网站来自 IDMClone（选项 > 文件类型）。"
+  },
+  "popupExtsLabel": {
+    "message": "IDMClone 下载的文件类型（与 IDM 相同；支持通配符，例如 r0*）："
+  },
+  "popupExcludeLabel": {
+    "message": "不自动从以下网站下载（每行一个，例如 *.example.com/*.mp3）："
+  },
+  "popupDefaults": {
+    "message": "IDM 默认值"
+  },
+  "popupOptions": {
+    "message": "在 IDMClone 中编辑"
+  },
+  "popupSave": {
+    "message": "保存"
+  },
+  "popupTest": {
+    "message": "测试连接"
+  },
+  "popupOffDefault": {
+    "message": "IDMClone 不捕获此浏览器的下载。"
+  },
+  "popupReady": {
+    "message": "就绪。"
+  },
+  "popupDefaultsLoaded": {
+    "message": "已载入 IDM 默认值。单击“保存”以应用。"
+  },
+  "popupSaved": {
+    "message": "已保存。"
+  },
+  "popupOpening": {
+    "message": "正在打开 IDMClone 选项…"
+  },
+  "popupOptionsOpened": {
+    "message": "请在 IDMClone 中更改列表，然后重新打开此面板。"
+  },
+  "popupOptionsFail": {
+    "message": "无法打开 IDMClone。"
+  },
+  "popupTesting": {
+    "message": "正在测试…"
+  },
+  "popupError": {
+    "message": "错误：$ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupNoHost": {
+    "message": "无法联系主机。是否已运行 install.ps1？"
+  },
+  "popupConnected": {
+    "message": "已连接：主机有响应，IDMClone 已打开。"
+  },
+  "popupHostOnly": {
+    "message": "主机有响应。IDMClone 已关闭：捕获下载时会自动打开。"
+  },
+  "subtitleItem": {
+    "message": "字幕: $NAME$ ($FORMAT$)",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "format": {
+        "content": "$2"
+      }
+    }
+  },
+  "subtitleNoLang": {
+    "message": "未知语言"
+  },
+  "subtitleNoUrl": {
+    "message": "这些字幕没有 IDMClone 可以下载的地址。"
+  },
+  "langEs": {
+    "message": "西班牙语"
+  },
+  "langEn": {
+    "message": "英语"
+  },
+  "langFr": {
+    "message": "法语"
+  },
+  "langDe": {
+    "message": "德语"
+  },
+  "langIt": {
+    "message": "意大利语"
+  },
+  "langPt": {
+    "message": "葡萄牙语"
+  },
+  "langCa": {
+    "message": "加泰罗尼亚语"
+  },
+  "langGl": {
+    "message": "加利西亚语"
+  },
+  "langEu": {
+    "message": "巴斯克语"
+  },
+  "langNl": {
+    "message": "荷兰语"
+  },
+  "langRu": {
+    "message": "俄语"
+  },
+  "langJa": {
+    "message": "日语"
+  },
+  "langZh": {
+    "message": "中文"
+  },
+  "langKo": {
+    "message": "韩语"
+  },
+  "langAr": {
+    "message": "阿拉伯语"
+  },
+  "langPl": {
+    "message": "波兰语"
+  },
+  "langTr": {
+    "message": "土耳其语"
+  },
+  "langSv": {
+    "message": "瑞典语"
+  },
+  "langNo": {
+    "message": "挪威语"
+  },
+  "langDa": {
+    "message": "丹麦语"
+  },
+  "langFi": {
+    "message": "芬兰语"
+  },
+  "langEl": {
+    "message": "希腊语"
+  },
+  "langHe": {
+    "message": "希伯来语"
+  },
+  "langHi": {
+    "message": "印地语"
+  },
+  "langCs": {
+    "message": "捷克语"
+  },
+  "langHu": {
+    "message": "匈牙利语"
+  },
+  "langRo": {
+    "message": "罗马尼亚语"
+  },
+  "langUk": {
+    "message": "乌克兰语"
+  },
+  "langId": {
+    "message": "印度尼西亚语"
+  },
+  "langTh": {
+    "message": "泰语"
+  },
+  "langVi": {
+    "message": "越南语"
+  }
+}

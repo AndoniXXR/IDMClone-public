@@ -1,0 +1,349 @@
+{
+  "extName": {
+    "message": "IDMClone Integration"
+  },
+  "extDesc": {
+    "message": "ブラウザーのダウンロードや動画を Windows 用ダウンロードマネージャー IDMClone に送ります。"
+  },
+  "offReason": {
+    "message": "IDMClone は $BROWSER$ のダウンロードを取り込みません（IDMClone のオプション > 一般）。",
+    "placeholders": {
+      "browser": {
+        "content": "$1"
+      }
+    }
+  },
+  "thisBrowser": {
+    "message": "このブラウザー"
+  },
+  "titleError": {
+    "message": "[エラー]"
+  },
+  "titleOff": {
+    "message": "[無効]"
+  },
+  "hostClosed": {
+    "message": "ホストが終了しました"
+  },
+  "hostUnavailable": {
+    "message": "ネイティブホストを利用できません: $ERR$。install.ps1 を実行しましたか？",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "hostTimeout": {
+    "message": "IDMClone が時間内に応答しませんでした。"
+  },
+  "notifyUnavailable": {
+    "message": "IDMClone を利用できません"
+  },
+  "notifyStaysInBrowser": {
+    "message": "ダウンロードはブラウザーで続行されます"
+  },
+  "idmNotAvailable": {
+    "message": "IDMClone を利用できません。"
+  },
+  "cantReadLinks": {
+    "message": "このページのリンクを読み取れません: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "selectionNoLinks": {
+    "message": "選択範囲にリンクがありません。"
+  },
+  "pageNoLinks": {
+    "message": "このページにはリンクがありません。"
+  },
+  "linkNotDownloadable": {
+    "message": "そのリンクはダウンロードできません（$SCHEME$）。",
+    "placeholders": {
+      "scheme": {
+        "content": "$1"
+      }
+    }
+  },
+  "menuDownload": {
+    "message": "IDMClone でダウンロード"
+  },
+  "menuSelected": {
+    "message": "選択したリンクを IDMClone でダウンロード"
+  },
+  "menuAll": {
+    "message": "すべてのリンクを IDMClone でダウンロード"
+  },
+  "panelDownloadVideo": {
+    "message": "この動画をダウンロード"
+  },
+  "panelDownloadAudio": {
+    "message": "この音声をダウンロード"
+  },
+  "panelDownloadVideoTitle": {
+    "message": "この動画を IDMClone でダウンロード"
+  },
+  "panelDownloadAudioTitle": {
+    "message": "この音声を IDMClone でダウンロード"
+  },
+  "panelAria": {
+    "message": "IDMClone ダウンロードパネル"
+  },
+  "panelAbout": {
+    "message": "このパネルについて"
+  },
+  "panelClose": {
+    "message": "閉じる"
+  },
+  "panelHeadVideo": {
+    "message": "動画"
+  },
+  "panelHeadAudio": {
+    "message": "音声"
+  },
+  "panelLive": {
+    "message": "、ライブ（停止するまで録画）"
+  },
+  "panelDuration": {
+    "message": "、再生時間 $DUR$",
+    "placeholders": {
+      "dur": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelDrm": {
+    "message": "このコンテンツは保護されている (DRM) ため、IDMClone ではダウンロードできません。"
+  },
+  "panelAboutText": {
+    "message": "これは IDMClone のダウンロードパネルです。\nIDMClone > オプション > 一般 でカスタマイズまたは無効にできます。"
+  },
+  "panelSending": {
+    "message": "IDMClone に送信中..."
+  },
+  "panelSendFailReload": {
+    "message": "送信できませんでした: $ERR$。ページを再読み込みしてください。",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSendFailUpdated": {
+    "message": "送信できませんでした: $ERR$。拡張機能をインストールまたは再読み込みしたばかりの場合は、ページを再読み込みしてください。",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSent": {
+    "message": "IDMClone に送信しました"
+  },
+  "panelNoReply": {
+    "message": "IDMClone が応答しませんでした。"
+  },
+  "selClose": {
+    "message": "閉じる（このページでは再表示しない）"
+  },
+  "selAboutText": {
+    "message": "これは選択したリンク用の IDMClone ダウンロードパネルです。\nIDMClone > オプション > 一般 でカスタマイズまたは無効にできます。"
+  },
+  "selSentOne": {
+    "message": "IDMClone に送信しました（1 件のリンク）"
+  },
+  "selSentMany": {
+    "message": "IDMClone に送信しました（$N$ 件のリンク）",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "mediaAudioOnly": {
+    "message": "音声のみ"
+  },
+  "popupCapture": {
+    "message": "ダウンロードを自動的に取り込む"
+  },
+  "popupMinBefore": {
+    "message": "次より小さいファイルは取り込まない:"
+  },
+  "popupMinAfter": {
+    "message": "KB"
+  },
+  "popupFromApp": {
+    "message": "ファイルの種類と除外サイトは IDMClone のもの（オプション > ファイルの種類）を使います。"
+  },
+  "popupExtsLabel": {
+    "message": "IDMClone がダウンロードするファイルの種類（IDM と同様。ワイルドカード可、例: r0*）:"
+  },
+  "popupExcludeLabel": {
+    "message": "次のサイトからは自動的にダウンロードしない（1 行に 1 つ、例: *.example.com/*.mp3）:"
+  },
+  "popupDefaults": {
+    "message": "IDM の既定値"
+  },
+  "popupOptions": {
+    "message": "IDMClone で編集"
+  },
+  "popupSave": {
+    "message": "保存"
+  },
+  "popupTest": {
+    "message": "接続をテスト"
+  },
+  "popupOffDefault": {
+    "message": "IDMClone はこのブラウザーのダウンロードを取り込みません。"
+  },
+  "popupReady": {
+    "message": "準備完了。"
+  },
+  "popupDefaultsLoaded": {
+    "message": "IDM の既定値を読み込みました。適用するには [保存] をクリックしてください。"
+  },
+  "popupSaved": {
+    "message": "保存しました。"
+  },
+  "popupOpening": {
+    "message": "IDMClone のオプションを開いています…"
+  },
+  "popupOptionsOpened": {
+    "message": "IDMClone で一覧を変更してから、このパネルを開き直してください。"
+  },
+  "popupOptionsFail": {
+    "message": "IDMClone を開けませんでした。"
+  },
+  "popupTesting": {
+    "message": "テスト中…"
+  },
+  "popupError": {
+    "message": "エラー: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupNoHost": {
+    "message": "ホストに接続できませんでした。install.ps1 を実行しましたか？"
+  },
+  "popupConnected": {
+    "message": "接続済み: ホストが応答し、IDMClone は起動しています。"
+  },
+  "popupHostOnly": {
+    "message": "ホストは応答しています。IDMClone は終了しています: ダウンロードを取り込むと自動的に起動します。"
+  },
+  "subtitleItem": {
+    "message": "字幕: $NAME$ ($FORMAT$)",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "format": {
+        "content": "$2"
+      }
+    }
+  },
+  "subtitleNoLang": {
+    "message": "言語不明"
+  },
+  "subtitleNoUrl": {
+    "message": "この字幕には IDMClone がダウンロードできるアドレスがありません。"
+  },
+  "langEs": {
+    "message": "スペイン語"
+  },
+  "langEn": {
+    "message": "英語"
+  },
+  "langFr": {
+    "message": "フランス語"
+  },
+  "langDe": {
+    "message": "ドイツ語"
+  },
+  "langIt": {
+    "message": "イタリア語"
+  },
+  "langPt": {
+    "message": "ポルトガル語"
+  },
+  "langCa": {
+    "message": "カタルーニャ語"
+  },
+  "langGl": {
+    "message": "ガリシア語"
+  },
+  "langEu": {
+    "message": "バスク語"
+  },
+  "langNl": {
+    "message": "オランダ語"
+  },
+  "langRu": {
+    "message": "ロシア語"
+  },
+  "langJa": {
+    "message": "日本語"
+  },
+  "langZh": {
+    "message": "中国語"
+  },
+  "langKo": {
+    "message": "韓国語"
+  },
+  "langAr": {
+    "message": "アラビア語"
+  },
+  "langPl": {
+    "message": "ポーランド語"
+  },
+  "langTr": {
+    "message": "トルコ語"
+  },
+  "langSv": {
+    "message": "スウェーデン語"
+  },
+  "langNo": {
+    "message": "ノルウェー語"
+  },
+  "langDa": {
+    "message": "デンマーク語"
+  },
+  "langFi": {
+    "message": "フィンランド語"
+  },
+  "langEl": {
+    "message": "ギリシャ語"
+  },
+  "langHe": {
+    "message": "ヘブライ語"
+  },
+  "langHi": {
+    "message": "ヒンディー語"
+  },
+  "langCs": {
+    "message": "チェコ語"
+  },
+  "langHu": {
+    "message": "ハンガリー語"
+  },
+  "langRo": {
+    "message": "ルーマニア語"
+  },
+  "langUk": {
+    "message": "ウクライナ語"
+  },
+  "langId": {
+    "message": "インドネシア語"
+  },
+  "langTh": {
+    "message": "タイ語"
+  },
+  "langVi": {
+    "message": "ベトナム語"
+  }
+}

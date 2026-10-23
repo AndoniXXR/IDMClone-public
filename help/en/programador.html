@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scheduler and queues - IDMClone</title>
+<link rel="stylesheet" href="../ayuda.css">
+</head>
+<body>
+<p class="nav"><a href="index.html">Help contents</a></p>
+<h1>Scheduler and queues</h1>
+<p>Downloads can wait in queues: the <b>main queue</b>, the <b>synchronization queue</b> (downloads again the files that
+changed on the server) and the ones you create with <b>New queue</b>. In the download list, the "Q" column shows each
+file's queue.</p>
+<h2>"Schedule" tab</h2>
+<ul>
+<li><b>Start download on IDMClone startup</b>.</li>
+<li><b>Start download at</b> HH:MM, once (on a date) or daily (on the checked days). In "Periodic synchronization",
+<b>Start again every</b> H hours M minutes.</li>
+<li><b>Stop download at</b> HH:MM and the <b>number of retries</b> per file if it fails.</li>
+<li>When the queue finishes (separate checkboxes): <b>Open the following file</b>, <b>Exit IDMClone</b> and <b>Turn off
+computer</b>, with the mode (shut down, sleep or hibernate); if both of the last two are checked, it turns off.
+<b>Force processes to terminate</b> (only with "Turn off computer") closes open programs without letting them save when
+shutting down; when sleeping or hibernating, it forces the sleep. Use it with care. There is a 30-second countdown first
+that can be cancelled.</li>
+<li>A queue that had nothing to download does nothing when it finishes. "Hang up modem" has no effect in IDMClone.</li>
+</ul>
+<h2>"Files in the queue" tab</h2>
+<p>How many files are downloaded at the same time, and the order (move up, move down, remove from queue). Completed files
+leave their queue, except in the synchronization queue. A file that fails goes to the end and is retried.</p>
+<h2>Buttons</h2>
+<p><b>Start now</b> and <b>Stop</b> act on the selected queue; <b>Apply</b> saves the changes (closing does too).
+<b>Download limits</b> holds the same limits as <a href="opciones-conexion.html">Options &gt; Connection</a>.</p>
+<p class="nota">Sleeping or hibernating when a queue finishes is handy at night, but the computer does not wake up by
+itself for the next scheduled queue.</p>
+</body>
+</html>

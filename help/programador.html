@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programador y colas - IDMClone</title>
+<link rel="stylesheet" href="ayuda.css">
+</head>
+<body>
+<p class="nav"><a href="index.html">Índice de la ayuda</a></p>
+<h1>Programador y colas</h1>
+<p>Las descargas pueden esperar en colas: la <b>cola principal</b>, la <b>cola de sincronización</b> (vuelve a bajar los
+archivos que han cambiado en el servidor) y las que crees con <b>Nueva cola</b>. En la lista de descargas, la columna "Q"
+muestra la cola de cada archivo.</p>
+<h2>Pestaña "Programar"</h2>
+<ul>
+<li><b>Comenzar la descarga al arrancar IDMClone</b>.</li>
+<li><b>Iniciar descarga a las</b> HH:MM, una vez (en una fecha) o diariamente (los días marcados). En "Sincronización
+periódica", <b>Iniciar otra vez todo</b> cada H horas M minutos.</li>
+<li><b>Detener descarga a las</b> HH:MM y <b>número de reintentos</b> por archivo si falla.</li>
+<li>Al terminar la cola (casillas independientes): <b>Abrir el siguiente archivo</b>, <b>Salir de IDMClone</b> y
+<b>Apagar equipo</b>, con el modo (apagar, suspender o hibernar); si están marcadas las dos últimas, se apaga.
+<b>Forzar el fin de procesos</b> (solo con "Apagar equipo") cierra los programas abiertos sin dejarles guardar al apagar;
+al suspender o hibernar, fuerza la suspensión. Úsalo con cuidado. Antes hay una cuenta atrás de 30 segundos que se puede
+cancelar.</li>
+<li>Una cola que no tenía nada que descargar no hace nada al terminar. "Colgar el módem" no tiene efecto en IDMClone.</li>
+</ul>
+<h2>Pestaña "Archivos en la cola"</h2>
+<p>Cuántos archivos se descargan a la vez, y el orden (subir, bajar, quitar de la cola). Los completados salen de su cola,
+salvo en la de sincronización. Un archivo que falla pasa al final y se reintenta.</p>
+<h2>Botones</h2>
+<p><b>Iniciar ahora</b> y <b>Detener</b> actúan sobre la cola seleccionada; <b>Aplicar</b> guarda los cambios (también al
+cerrar). En <b>Límites de descarga</b> están los mismos límites que en <a href="opciones-conexion.html">Opciones &gt; Conexión</a>.</p>
+<p class="nota">Suspender o hibernar al terminar una cola es útil de noche, pero el equipo no se despierta solo para la
+siguiente cola programada.</p>
+</body>
+</html>

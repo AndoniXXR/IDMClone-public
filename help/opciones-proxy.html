@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opciones: Proxy/Socks - IDMClone</title>
+<link rel="stylesheet" href="ayuda.css">
+</head>
+<body>
+<p class="nav"><a href="index.html">Índice de la ayuda</a></p>
+<h1>Opciones: Proxy/Socks</h1>
+<ul>
+<li><b>No hay proxy/socks</b>: conexión directa.</li>
+<li><b>Usar configuración del sistema</b>: el proxy configurado en Windows.</li>
+<li><b>Usar scripts de configuración automáticamente</b>: un script PAC (su dirección).</li>
+<li><b>Configuración manual de proxy/socks</b>: servidor, puerto y, si el proxy lo pide, usuario y contraseña (se guarda
+cifrada), y los protocolos que lo usan (http, https, ftp). <b>Obtener del sistema</b> copia el proxy de Windows.
+<b>Avanzado... / Socks...</b>: un proxy para cada protocolo (HTTP, HTTPS y ftp, cada uno con su servidor, puerto, usuario y
+contraseña; sin servidor propio usa el de la página), el servidor SOCKS (Socks 5 o Socks 4; con <b>Proxy DNS</b> los nombres
+los resuelve el servidor SOCKS, sin él este equipo), que solo se usa para los protocolos no marcados, y las direcciones que no
+usan proxy. El FTP va por el proxy HTTP, que hace de cliente FTP (con varias conexiones si admite rangos); no pasa
+por SOCKS, y el FTP cifrado (ftps) va siempre directo.</li>
+<li><b>Usar proxy/socks desde la petición de un navegador</b>: para las descargas que vienen del navegador, si fallan por no
+llegar al servidor (o por un 407 del proxy configurado), se repiten por el proxy que usaba el navegador. Solo funciona con un
+proxy HTTP sin contraseña indicado por el navegador: en la práctica, Firefox; Chromium (Chrome, Edge...) no lo indica.</li>
+<li><b>usar FTP en modo PASV</b>: activado por defecto; si un modo falla, IDMClone prueba una vez con el otro.</li>
+</ul>
+<div class="nota">Qué protocolos y tipos de proxy admite IDMClone (http, https, ftp, SOCKS) lo indica la nota de la propia
+página de Opciones.</div>
+</body>
+</html>

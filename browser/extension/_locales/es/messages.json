@@ -1,0 +1,447 @@
+{
+  "extName": {
+    "message": "IDMClone Integration",
+    "description": "Nombre de la extensión (manifiesto, barra y popup)"
+  },
+  "extDesc": {
+    "message": "Envía las descargas y los vídeos del navegador a IDMClone, el gestor de descargas para Windows.",
+    "description": "Descripción en la tienda y en la página de extensiones (máx. 132 caracteres)"
+  },
+  "offReason": {
+    "message": "IDMClone no captura las descargas de $BROWSER$ (Opciones > General de IDMClone).",
+    "description": "Popup: IDMClone tiene desmarcado este navegador",
+    "placeholders": {
+      "browser": {
+        "content": "$1"
+      }
+    }
+  },
+  "thisBrowser": {
+    "message": "este navegador",
+    "description": "Sustituye al nombre del navegador si no se conoce"
+  },
+  "titleError": {
+    "message": "[ERROR]",
+    "description": "Descripción del botón: no se puede hablar con IDMClone"
+  },
+  "titleOff": {
+    "message": "[DESACTIVADA]",
+    "description": "Descripción del botón: captura desactivada"
+  },
+  "hostClosed": {
+    "message": "el host se cerró",
+    "description": "Motivo cuando el host nativo se cierra sin decir por qué"
+  },
+  "hostUnavailable": {
+    "message": "Host nativo no disponible: $ERR$. ¿Ejecutaste install.ps1?",
+    "description": "Error: no se puede abrir el host nativo",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "hostTimeout": {
+    "message": "IDMClone no respondió a tiempo.",
+    "description": "Error: IDMClone no contesta"
+  },
+  "notifyUnavailable": {
+    "message": "IDMClone no disponible",
+    "description": "Título del aviso de error"
+  },
+  "notifyStaysInBrowser": {
+    "message": "La descarga sigue en el navegador",
+    "description": "Título del aviso: IDMClone no aceptó la descarga"
+  },
+  "idmNotAvailable": {
+    "message": "IDMClone no está disponible.",
+    "description": "Texto del aviso cuando no hay más detalle"
+  },
+  "cantReadLinks": {
+    "message": "No se pueden leer los enlaces de esta página: $ERR$",
+    "description": "Aviso: la página no deja leer sus enlaces",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "selectionNoLinks": {
+    "message": "La selección no tiene enlaces.",
+    "description": "Aviso"
+  },
+  "pageNoLinks": {
+    "message": "La página no tiene enlaces.",
+    "description": "Aviso"
+  },
+  "linkNotDownloadable": {
+    "message": "Ese enlace no se puede descargar ($SCHEME$).",
+    "description": "Aviso: esquema que IDMClone no descarga (blob, data...)",
+    "placeholders": {
+      "scheme": {
+        "content": "$1"
+      }
+    }
+  },
+  "menuDownload": {
+    "message": "Descargar con IDMClone",
+    "description": "Menú contextual y botón del panel de selección"
+  },
+  "menuSelected": {
+    "message": "Descargar los enlaces seleccionados con IDMClone",
+    "description": "Menú contextual (selección)"
+  },
+  "menuAll": {
+    "message": "Descargar todos los enlaces con IDMClone",
+    "description": "Menú contextual (página)"
+  },
+  "panelDownloadVideo": {
+    "message": "Descargar este video",
+    "description": "Botón del panel de vídeo"
+  },
+  "panelDownloadAudio": {
+    "message": "Descargar este audio",
+    "description": "Botón del panel (solo audio)"
+  },
+  "panelDownloadVideoTitle": {
+    "message": "Descargar este video con IDMClone",
+    "description": "Descripción del botón del panel de vídeo"
+  },
+  "panelDownloadAudioTitle": {
+    "message": "Descargar este audio con IDMClone",
+    "description": "Descripción del botón del panel (solo audio)"
+  },
+  "panelAria": {
+    "message": "Panel de descarga de IDMClone",
+    "description": "Nombre accesible de los paneles"
+  },
+  "panelAbout": {
+    "message": "Acerca de este panel",
+    "description": "Botón ? y elemento del menú del panel"
+  },
+  "panelClose": {
+    "message": "Cerrar",
+    "description": "Botón X"
+  },
+  "panelHeadVideo": {
+    "message": "video",
+    "description": "Encabezado de la lista de calidades"
+  },
+  "panelHeadAudio": {
+    "message": "audio",
+    "description": "Encabezado de la lista de calidades"
+  },
+  "panelLive": {
+    "message": ", en directo (se graba hasta que lo detengas)",
+    "description": "Detrás del encabezado: emisión en directo"
+  },
+  "panelDuration": {
+    "message": ", duración $DUR$",
+    "description": "Detrás del encabezado",
+    "placeholders": {
+      "dur": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelDrm": {
+    "message": "IDMClone no puede descargar este contenido porque está protegido (DRM).",
+    "description": "Contenido protegido"
+  },
+  "panelAboutText": {
+    "message": "Este es el panel de descarga de IDMClone.\nPuede ser personalizado o desactivado en IDMClone > Opciones > General.",
+    "description": "Ventana del botón ? del panel de vídeo"
+  },
+  "panelSending": {
+    "message": "Enviando a IDMClone...",
+    "description": "Estado del panel"
+  },
+  "panelSendFailReload": {
+    "message": "No se pudo enviar: $ERR$. Recarga la página.",
+    "description": "Estado del panel",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSendFailUpdated": {
+    "message": "No se pudo enviar: $ERR$. Si acabas de instalar o recargar la extensión, recarga la página.",
+    "description": "Estado del panel",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "panelSent": {
+    "message": "Enviado a IDMClone",
+    "description": "Estado del panel"
+  },
+  "panelNoReply": {
+    "message": "IDMClone no respondió.",
+    "description": "Estado del panel"
+  },
+  "selClose": {
+    "message": "Cerrar (no volver a mostrarlo en esta página)",
+    "description": "Botón X del panel de selección"
+  },
+  "selAboutText": {
+    "message": "Este es el panel de descarga de IDMClone para los enlaces seleccionados.\nPuede ser personalizado o desactivado en IDMClone > Opciones > General.",
+    "description": "Ventana del botón ? del panel de selección"
+  },
+  "selSentOne": {
+    "message": "Enviado a IDMClone (1 enlace)",
+    "description": "Panel de selección: un enlace"
+  },
+  "selSentMany": {
+    "message": "Enviado a IDMClone ($N$ enlaces)",
+    "description": "Panel de selección: varios enlaces",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "mediaAudioOnly": {
+    "message": "solo audio",
+    "description": "Lista de calidades: pista solo de audio"
+  },
+  "popupCapture": {
+    "message": "Capturar descargas automáticamente",
+    "description": "Popup"
+  },
+  "popupMinBefore": {
+    "message": "No capturar archivos de menos de",
+    "description": "Popup: antes del número"
+  },
+  "popupMinAfter": {
+    "message": "KB",
+    "description": "Popup: después del número"
+  },
+  "popupFromApp": {
+    "message": "Los tipos de archivo y los sitios excluidos son los de IDMClone (Opciones > Tipos de archivo).",
+    "description": "Popup"
+  },
+  "popupExtsLabel": {
+    "message": "Tipos de archivo que descarga IDMClone (como en IDM; admite comodines, p. ej. r0*):",
+    "description": "Popup"
+  },
+  "popupExcludeLabel": {
+    "message": "No descargar automáticamente desde (uno por línea, p. ej. *.ejemplo.com/*.mp3):",
+    "description": "Popup"
+  },
+  "popupDefaults": {
+    "message": "Valores de IDM",
+    "description": "Popup: botón"
+  },
+  "popupOptions": {
+    "message": "Editar en IDMClone",
+    "description": "Popup: botón"
+  },
+  "popupSave": {
+    "message": "Guardar",
+    "description": "Popup: botón"
+  },
+  "popupTest": {
+    "message": "Probar conexión",
+    "description": "Popup: botón"
+  },
+  "popupOffDefault": {
+    "message": "IDMClone no captura las descargas de este navegador.",
+    "description": "Popup"
+  },
+  "popupReady": {
+    "message": "Listo.",
+    "description": "Popup: estado"
+  },
+  "popupDefaultsLoaded": {
+    "message": "Valores de IDM cargados. Pulsa Guardar para aplicarlos.",
+    "description": "Popup: estado"
+  },
+  "popupSaved": {
+    "message": "Guardado.",
+    "description": "Popup: estado"
+  },
+  "popupOpening": {
+    "message": "Abriendo las opciones de IDMClone…",
+    "description": "Popup: estado"
+  },
+  "popupOptionsOpened": {
+    "message": "Cambia las listas en IDMClone y vuelve a abrir este panel.",
+    "description": "Popup: estado"
+  },
+  "popupOptionsFail": {
+    "message": "No se pudo abrir IDMClone.",
+    "description": "Popup: estado"
+  },
+  "popupTesting": {
+    "message": "Probando…",
+    "description": "Popup: estado"
+  },
+  "popupError": {
+    "message": "Error: $ERR$",
+    "description": "Popup: estado",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupNoHost": {
+    "message": "No se pudo contactar con el host. ¿Ejecutaste install.ps1?",
+    "description": "Popup: estado"
+  },
+  "popupConnected": {
+    "message": "Conectado: el host responde e IDMClone está abierto.",
+    "description": "Popup: estado"
+  },
+  "popupHostOnly": {
+    "message": "El host responde. IDMClone está cerrado: se abrirá solo al capturar una descarga.",
+    "description": "Popup: estado"
+  },
+  "subtitleItem": {
+    "message": "Subtítulos: $NAME$ ($FORMAT$)",
+    "description": "Lista de calidades del panel: unos subtítulos (nombre o idioma, y formato: vtt, srt)",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "format": {
+        "content": "$2"
+      }
+    }
+  },
+  "subtitleNoLang": {
+    "message": "sin idioma",
+    "description": "Lista de calidades: subtítulos de idioma desconocido"
+  },
+  "subtitleNoUrl": {
+    "message": "Estos subtítulos no tienen una dirección que IDMClone pueda descargar.",
+    "description": "Panel: los subtítulos elegidos no son http(s)"
+  },
+  "langEs": {
+    "message": "Español",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langEn": {
+    "message": "Inglés",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langFr": {
+    "message": "Francés",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langDe": {
+    "message": "Alemán",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langIt": {
+    "message": "Italiano",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langPt": {
+    "message": "Portugués",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langCa": {
+    "message": "Catalán",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langGl": {
+    "message": "Gallego",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langEu": {
+    "message": "Euskera",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langNl": {
+    "message": "Neerlandés",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langRu": {
+    "message": "Ruso",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langJa": {
+    "message": "Japonés",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langZh": {
+    "message": "Chino",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langKo": {
+    "message": "Coreano",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langAr": {
+    "message": "Árabe",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langPl": {
+    "message": "Polaco",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langTr": {
+    "message": "Turco",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langSv": {
+    "message": "Sueco",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langNo": {
+    "message": "Noruego",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langDa": {
+    "message": "Danés",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langFi": {
+    "message": "Finés",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langEl": {
+    "message": "Griego",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langHe": {
+    "message": "Hebreo",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langHi": {
+    "message": "Hindi",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langCs": {
+    "message": "Checo",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langHu": {
+    "message": "Húngaro",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langRo": {
+    "message": "Rumano",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langUk": {
+    "message": "Ucraniano",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langId": {
+    "message": "Indonesio",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langTh": {
+    "message": "Tailandés",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "langVi": {
+    "message": "Vietnamita",
+    "description": "Nombre de idioma de unos subtítulos (panel)"
+  }
+}

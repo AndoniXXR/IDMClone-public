@@ -1,0 +1,15 @@
+IDMClone - acuerdo de licencia
+
+Lee con atención estos términos antes de instalar IDMClone.
+
+1. IDMClone es un gestor de descargas. Puedes instalarlo y usarlo en tus equipos.
+
+2. IDMClone se ofrece "tal cual", sin garantías de ningún tipo, ni explícitas ni implícitas. Quien lo distribuye no se hace responsable de los daños o las pérdidas que pueda causar su uso.
+
+3. Eres responsable de lo que descargas con IDMClone y de respetar los derechos de autor y las condiciones de uso de cada sitio web. IDMClone no está pensado para saltarse protecciones anticopia (DRM) ni otras medidas técnicas de protección.
+
+4. IDMClone es un proyecto independiente. No está afiliado a Tonec Inc. ni a Internet Download Manager.
+
+5. La integración con el navegador solo usa las APIs que los navegadores ofrecen a sus extensiones y el registro de mensajería nativa de tu usuario. IDMClone no instala controladores ni intercepta el tráfico de otras aplicaciones.
+
+Si aceptas estos términos, elige "Acepto" para continuar.

@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><title>check</title>
+<video id="v" muted playsinline></video>
+<script>
+// Lo usa playcheck.js: reproduce el archivo, salta a la mitad y apunta lo que el navegador decodificó.
+const q = new URLSearchParams(location.search), v = document.getElementById("v");
+const src = q.get("src");
+const audioOnly = /\.(m4a|weba|aac|mp3)$/i.test(src);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+v.onerror = () => { window.result = { error: v.error ? v.error.code + " " + v.error.message : "error" }; };
+v.src = src;
+v.onloadedmetadata = async () => {
+  try {
+    await v.play();
+    await wait(2500);
+    const t1 = v.currentTime;
+    v.currentTime = v.duration / 2;
+    await new Promise((r) => { v.onseeked = r; setTimeout(r, 5000); });
+    await wait(1500);
+    window.result = {
+      duration: Math.round(v.duration * 100) / 100, width: v.videoWidth, height: v.videoHeight,
+      playedTo: Math.round(t1 * 100) / 100,
+      decodedVideo: audioOnly ? 1 : v.webkitVideoDecodedByteCount, decodedAudio: v.webkitAudioDecodedByteCount,
+      seekOk: v.currentTime > v.duration / 2, audioOnly
+    };
+  } catch (e) { window.result = { error: String(e) }; }
+};
+</script>

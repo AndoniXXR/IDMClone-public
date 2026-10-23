@@ -1,0 +1,4 @@
+# Claves privadas de la extensión (fijan su ID): nunca en el repositorio público.
+browser/keys/
+*.pem
+*.pfx
