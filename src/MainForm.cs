@@ -124,8 +124,7 @@ namespace IDMClone
         {
             _mgr = mgr; _cfg = cfg; _sched = sched;
             SuspendLayout();
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleMode = AutoScaleMode.None; // se escala a mano al terminar (Dpi.ScaleForm, como los diálogos)
             Text = "IDMClone";
             Icon = AppIcon.Main;
             Font = Theme.UiFont; // como IDM: Tahoma 8 en la lista, el árbol y la barra (los menús, la del sistema)
@@ -150,6 +149,7 @@ namespace IDMClone
             BuildTray();
             ApplyCategoriesVisible();
             ResumeLayout(false);
+            Dpi.ScaleForm(this);
             PerformLayout();
 
             _mgr.ItemFinished += OnItemFinished;

@@ -33,6 +33,16 @@ namespace IDMClone
 
         public static int Px(int logical) { return (int)Math.Round(logical * Factor); }
 
+        // Escala de la pantalla aplicada a una ventana recién construida, UNA vez. Las ventanas van con AutoScaleMode.None
+        // y llaman a esto al terminar de construirse: el autoescalado de WinForms (AutoScaleMode.Dpi) escala DOS veces las
+        // etiquetas que heredan la fuente de la ventana (Label.OnFontChanged, al añadirlas, las escala con el factor
+        // pendiente y luego vuelven a escalarse con el resto), y al 150 % se montaban sobre sus cajas de texto.
+        public static void ScaleForm(Form f)
+        {
+            float k = Factor;
+            if (k != 1f) f.Scale(new SizeF(k, k));
+        }
+
         // Casillas de varias líneas: con la pantalla al 150 % el alto escalado se queda a 1-2 px de lo que piden sus
         // líneas y GDI no dibuja la última (se veía "...si hay errores de" sin el resto). Al abrir la ventana (ya
         // escalada y traducida) se les da el alto que piden, sin pasar del control que tengan debajo.

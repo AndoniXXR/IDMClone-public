@@ -289,8 +289,7 @@ namespace IDMClone
         {
             _item = item; _mgr = mgr; _cfg = mgr != null ? mgr.Config : AppConfig.CreateDefault();
             SuspendLayout();
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleMode = AutoScaleMode.None; // se escala a mano al terminar (Dpi.ScaleForm, como los diálogos)
             Font = Theme.UiFont; // como IDM: Tahoma 8
             Text = item.FileName;
             Icon = AppIcon.Small;
@@ -331,6 +330,7 @@ namespace IDMClone
             _timer = new Timer(); _timer.Interval = 500; _timer.Tick += delegate { Refresh2(); }; _timer.Start();
             Refresh2();
             ResumeLayout(false);
+            Dpi.ScaleForm(this);
             PerformLayout();
         }
 

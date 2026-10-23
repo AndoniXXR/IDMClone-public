@@ -20,8 +20,9 @@ namespace IDMClone.Tests
             Run("escala 150 %: ventana principal (columnas, iconos, árbol)", T_DpiMain);
         }
 
-        // Lo que hace Windows a esa escala: letras más grandes (las propias de cada control también) y
-        // controles más grandes. Lo que el código escala por su cuenta lo lee de Dpi.Factor.
+        // Lo que hace Windows a esa escala y la ventana no hace sola: letras más grandes (las propias de cada control
+        // también). Los controles ya los escaló la propia ventana al construirse (Dpi.ScaleForm, con Dpi.Override = k):
+        // la simulación y la pantalla de verdad pasan por el mismo código.
         public static void SimulateDpi(Form f, float k)
         {
             if (k == 1f) return;
@@ -29,7 +30,6 @@ namespace IDMClone.Tests
             CollectFonts(f, own);
             foreach (KeyValuePair<Control, Font> kv in own)
                 kv.Key.Font = new Font(kv.Value.FontFamily, kv.Value.Size * k, kv.Value.Style, kv.Value.Unit);
-            f.Scale(new SizeF(k, k));
             // Con una pantalla de verdad la ventana ya está escalada al abrirse (OnShown); aquí se escala después.
             Dpi.FitWrappedChecks(f);
         }

@@ -39,8 +39,8 @@ namespace IDMClone.Setup
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleMode = AutoScaleMode.None; // se escala a mano al terminar (Dpi.ScaleForm, como los diálogos)
+            SuspendLayout();
             ClientSize = new Size(600, 400);
             Font = SystemFonts.MessageBoxFont;
             // En chino, la letra con ideogramas chinos (ver Theme.UiFont), al tamaño de la del sistema.
@@ -58,6 +58,9 @@ namespace IDMClone.Setup
             _cancel.Click += delegate { Close(); };
             AcceptButton = _next;
             if (build) { BuildPages(); ShowPage(0); }
+            ResumeLayout(false);
+            Dpi.ScaleForm(this);
+            PerformLayout();
         }
 
         Button Btn(string text, int x, int y)

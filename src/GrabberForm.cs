@@ -110,6 +110,9 @@ namespace IDMClone
             // Un proyecto guardado se abre en la ventana principal (como IDM).
             ShowStep(project.Pages.Count > 0 ? 5 : 1);
             EndLayout();
+            // ShowStep calculó el alto con el del menú, que ya iba en píxeles de la pantalla, y EndLayout lo escaló otra
+            // vez: con todo ya escalado, el tamaño del paso se vuelve a calcular.
+            ApplySize();
         }
 
         // Proyecto nuevo con los valores de IDM para "Configuración personalizada" (pasos 3 y 4: 2 niveles en el

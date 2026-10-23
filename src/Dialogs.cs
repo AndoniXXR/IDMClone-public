@@ -12,8 +12,7 @@ namespace IDMClone
         protected DialogBase()
         {
             SuspendLayout();
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleMode = AutoScaleMode.None; // se escala a mano, una vez, al terminar de construirse (Dpi.ScaleForm)
             Font = Theme.UiFont; // como IDM: Tahoma 8
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
@@ -24,8 +23,17 @@ namespace IDMClone
         // Idioma de la interfaz: se traduce al abrirse.
         protected override void OnLoad(EventArgs e)
         {
+            ScaleToScreen(); // por si el diálogo no llamó a EndLayout
             Lang.Apply(this);
             base.OnLoad(e);
+        }
+
+        bool _scaled;
+        void ScaleToScreen()
+        {
+            if (_scaled) return;
+            _scaled = true;
+            Dpi.ScaleForm(this);
         }
 
         // Ya escalada a la pantalla y traducida: casillas de varias líneas con el alto que piden (Dpi.FitWrappedChecks).
@@ -53,6 +61,7 @@ namespace IDMClone
         protected void EndLayout()
         {
             ResumeLayout(false);
+            ScaleToScreen();
             PerformLayout();
         }
 

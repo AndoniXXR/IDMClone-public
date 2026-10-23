@@ -70,7 +70,12 @@ namespace IDMClone.Tests
         }
 
         static float _shot = 1f;
-        static void Sim(Form f) { SimulateDpi(f, _shot); }
+        // --real-dpi: la escala de verdad de Windows (Configuración > Pantalla), sin simular nada. Las pruebas normales
+        // no declaran la escala (Windows les dice 96 ppp y dan lo mismo en cualquier pantalla); con esta opción el proceso
+        // se declara consciente de la escala, como IDMClone.exe con su manifiesto, antes de abrir ninguna ventana.
+        static bool _realDpi;
+        static void Sim(Form f) { if (!_realDpi) SimulateDpi(f, _shot); }
+        [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
 
         // Nombre de archivo a partir del texto de una pestaña ("Proxy/Socks" -> "proxy-socks").
         static string SafeName(string text)
@@ -83,6 +88,8 @@ namespace IDMClone.Tests
 
         static int RunScreens(string[] args)
         {
+            foreach (string a in args) if (a == "--real-dpi") _realDpi = true;
+            if (_realDpi) SetProcessDPIAware(); // antes de cualquier ventana (y de leer Dpi.Factor)
             // Como la aplicación de verdad (Program.Main): estilos visuales y texto GDI; si no, las capturas salen
             // con controles clásicos y espacios comidos.
             Application.EnableVisualStyles();
@@ -94,7 +101,12 @@ namespace IDMClone.Tests
                 if (args[i] == "--tidy") _tidy = true;
                 if (args[i] == "--scale") _shot = float.Parse(args[i + 1], System.Globalization.CultureInfo.InvariantCulture);
             }
-            Dpi.Override = _shot; // simula una pantalla al 125 % / 150 % sin tocar Windows
+            if (_realDpi)
+            {
+                Dpi.Override = 0; _shot = Dpi.Factor;
+                Console.WriteLine("Escala real de Windows: " + Math.Round(_shot * 100) + " %");
+            }
+            else Dpi.Override = _shot; // simula una pantalla al 125 % / 150 % sin tocar Windows
             string dumpTo = null;
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "--lng-dump") dumpTo = args[i + 1];
             if (dumpTo != null) _texts = new List<string>();
