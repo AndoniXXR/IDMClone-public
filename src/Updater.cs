@@ -167,7 +167,7 @@ namespace IDMClone
             {
                 // Respuesta de la API de GitHub Releases.
                 u.VersionText = Str(d, "tag_name") ?? Str(d, "name");
-                u.Notes = Str(d, "body");
+                u.Notes = PlainNotes(Str(d, "body")); // GitHub las escribe en Markdown; la ventana las enseña como texto
                 u.PageUrl = Str(d, "html_url");
                 Dictionary<string, object> setup = null;
                 object[] assets = d.ContainsKey("assets") ? d["assets"] as object[] : null;
@@ -211,6 +211,90 @@ namespace IDMClone
             }
             if (u.Notes != null) u.Notes = u.Notes.Replace("\r\n", "\n").Replace("\n", "\r\n").Trim();
             return u;
+        }
+
+        // Markdown de las notas de una versión de GitHub -> texto para el cuadro "Novedades": títulos sin "#", viñetas "•",
+        // sin "**", "__", "`", "~~", citas ">", tablas, separadores, comentarios HTML ni los paréntesis de los enlaces.
+        // Solo cursiva con "*" bien cerrada ("*.mp3" o "a*b" se quedan) y "__" solo fuera de palabras ("__init__" se queda).
+        // Las repeticiones van acotadas: un texto enorme o raro no puede dejar colgada la comprobación.
+        const int PlainMaxLine = 4000;   // líneas más largas: solo se quitan sus espacios finales
+        const string PlainUrl = @"[^()\s]{0,500}(?:\([^()\s]{0,200}\)[^()\s]{0,200})?"; // admite un nivel de paréntesis
+
+        public static string PlainNotes(string md)
+        {
+            if (md == null) return null;
+            // Los caracteres de uso privado los usa esta limpieza como marcas: no pueden venir en el texto.
+            md = Regex.Replace(StripHtmlComments(md.Replace("\r\n", "\n")), "[\uE000-\uE1FF]", "");
+            StringBuilder sb = new StringBuilder();
+            int blanks = 0;
+            foreach (string raw in md.Split('\n'))
+            {
+                string line = raw.TrimEnd();
+                if (line.Length <= PlainMaxLine) line = PlainLine(line);
+                if (line == null) continue;
+                if (line.Trim().Length == 0) { if (++blanks > 1) continue; }      // como mucho una línea en blanco
+                else blanks = 0;
+                sb.Append(line).Append("\r\n");
+            }
+            return sb.ToString().Trim();
+        }
+
+        // Una línea de Markdown como texto; null = la línea sobra (valla de código, separador, fila "|---|" de una tabla).
+        static string PlainLine(string line)
+        {
+            if (Regex.IsMatch(line, @"^\s*(```|~~~)")) return null;                       // vallas de bloques de código
+            if (Regex.IsMatch(line, @"^\s{0,3}([-*_])(\s*\1){2,}\s*$")) return null;      // separador "---", "***", "* * *"
+            if (Regex.IsMatch(line, @"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")) return null; // "|---|:--:|"
+            if (line.IndexOf('|') >= 0 && Regex.IsMatch(line, @"^[\s|:-]*-[\s|:-]*$")) return null;          // "|-|-|"
+            if (Regex.IsMatch(line, @"^\s{0,3}=+\s*$")) return null;                           // "===" bajo un título
+            // `código`: su contenido se aparta tal cual (ni "**" ni "__" ni "\" se tocan dentro) y vuelve al final sin las comillas.
+            // Como en Markdown: "\`" no abre código, y dentro del código la barra es literal (`C:\IDMClone\`).
+            List<string> code = new List<string>();
+            line = Regex.Replace(line, @"(?<=(?:^|[^\\])(?:\\\\)*)(?<q>`+)(?<c>[^`].{0,500}?)(?<!`)\k<q>(?!`)", m =>
+            {
+                string c = m.Groups["c"].Value;
+                if (c.Length > 2 && c.StartsWith(" ") && c.EndsWith(" ")) c = c.Substring(1, c.Length - 2);
+                code.Add(c);
+                return "\uE100" + (code.Count - 1).ToString(CultureInfo.InvariantCulture) + "\uE101";
+            });
+            // "\*" y demás escapes: se apartan (caracteres de uso privado) para que nada los tome por formato.
+            line = Regex.Replace(line, @"\\([\\`*_{}\[\]()#+\-.!<>|~])", m => ((char)(0xE000 + m.Groups[1].Value[0])).ToString());
+            line = Regex.Replace(line, @"^(\s*)(>\s?)+", "$1");                          // cita "> texto"
+            line = Regex.Replace(line, @"^\s{0,3}#{1,6}\s+(.*?)(\s+#+)?$", "$1");         // "## Título"
+            line = Regex.Replace(line, @"^(\s*)[-*+]\s+(\[[ xX]\]\s+)?", "$1• ");         // "- elemento", "- [ ] tarea"
+            if (line.TrimStart().StartsWith("|"))                                          // fila de una tabla
+                line = Regex.Replace(line.Trim().Trim('|').Trim(), @"\s*\|\s*", "   ");
+            line = Regex.Replace(line, @"<br\s*/?>|</(summary|p|div)>", "\r\n", RegexOptions.IgnoreCase);
+            line = Regex.Replace(line, @"</?(details|summary|br|p|div|span|sub|sup|kbd|b|i|em|strong|a|img|hr)\b[^<>]{0,300}>", "", RegexOptions.IgnoreCase);
+            line = Regex.Replace(line, @"!\[([^\[\]]{0,300})\]\(" + PlainUrl + @"\)", "$1");  // imagen -> su texto
+            line = Regex.Replace(line, @"\[([^\[\]]{1,300})\]\(" + PlainUrl + @"\)", "$1");   // [texto](enlace) -> texto
+            line = Regex.Replace(line, @"\*\*(?=\S)(.{1,300}?)(?<=\S)\*\*", "$1");
+            line = Regex.Replace(line, @"(?<!\w)__(?=\S)(.{1,300}?)(?<=\S)__(?!\w)", "$1");
+            line = Regex.Replace(line, @"(?<![\w*])\*(?=[^\s*])([^*]{1,300}?)(?<=[^\s*])\*(?![\w*])", "$1");
+            line = Regex.Replace(line, @"~~(?=\S)(.{1,300}?)(?<=\S)~~", "$1");
+            line = Regex.Replace(line, "[\uE000-\uE07F]", m => ((char)(m.Value[0] - 0xE000)).ToString()); // escapes
+            return Regex.Replace(line, "\uE100(\\d{1,4})\uE101", m =>
+            {
+                int i = int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
+                return i < code.Count ? code[i] : "";
+            });
+        }
+
+        // Quita "<!-- ... -->" (también de varias líneas, como el que pone GitHub en las notas generadas). Sin regex: lineal.
+        static string StripHtmlComments(string s)
+        {
+            StringBuilder sb = new StringBuilder(s.Length);
+            int i = 0;
+            while (i < s.Length)
+            {
+                int open = s.IndexOf("<!--", i, StringComparison.Ordinal);
+                if (open < 0) { sb.Append(s, i, s.Length - i); break; }
+                int close = s.IndexOf("-->", open + 4, StringComparison.Ordinal);
+                if (close < 0) { sb.Append(s, i, s.Length - i); break; }       // sin cerrar: se deja tal cual
+                sb.Append(s, i, open - i);
+                i = close + 3;
+            }
+            return sb.ToString();
         }
 
         static string Str(Dictionary<string, object> d, string key)

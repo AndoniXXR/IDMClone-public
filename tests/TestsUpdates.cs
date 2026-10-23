@@ -24,6 +24,7 @@ namespace IDMClone.Tests
         {
             Run("actualizaciones: versiones (v1.3.0, 1.3, -beta) y comparación", TU_Versions);
             Run("actualizaciones: manifiesto propio, respuesta de GitHub Releases y solo HTTPS", TU_Parse);
+            Run("actualizaciones: las notas de GitHub (Markdown) se ven como texto en la ventana", TU_PlainNotes);
             Run("actualizaciones: servidor local con versión más nueva, igual y más vieja", TU_FetchNewerOlderSame);
             Run("actualizaciones: descarga el instalador y comprueba el SHA-256", TU_DownloadOk);
             Run("actualizaciones: SHA-256 distinto o ausente -> se descarta", TU_BadHash);
@@ -135,6 +136,71 @@ namespace IDMClone.Tests
             Check(!Updater.IsAllowed(new Uri("http://x.com/a.exe")) && !Updater.IsAllowed(new Uri("ftp://x.com/a.exe")), "http/ftp de fuera");
             CheckEq(Updater.DefaultFeedUrl, Updater.FeedUrl(AppConfig.CreateDefault()), "URL por defecto (GitHub Releases)");
             CheckEq("https://api.github.com/repos/AndoniXXR/IDMClone-public/releases/latest", Updater.DefaultFeedUrl, "Repositorio público");
+        }
+
+        static void TU_PlainNotes()
+        {
+            // Como el texto de la versión 1.3.0.
+            string md = "IDMClone 1.3.0 is a download manager.\r\n\r\n## What's new\r\n\r\n" +
+                        "- **Automatic updates.** Help > Check for updates.\r\n" +
+                        "- **Subtitles.** HLS, DASH and `<track>`; also `.txt`, `.htm` files.\r\n" +
+                        "- **Proxy and network**\r\n  - A separate proxy for each protocol.\r\n\r\n\r\n\r\n" +
+                        "## Install\r\n\r\n1. Download `IDMClone-Setup.exe` and run it.\r\n" +
+                        "   - Chromium: \"Load unpacked\" from the `browser\\extension` folder.\r\n\r\n" +
+                        "  `SHA-256: " + new string('c', 64) + "`\r\n\r\n" +
+                        "See [the release page](https://github.com/x/y) and ![logo](https://x/l.png).\r\n" +
+                        "```\r\ncodigo\r\n```\r\n" +
+                        "*cursiva* and _keep_this_ and *.mp3 or a*b, 2 * 3 = 6, \\*literal\\*.\r\n### Notes ###";
+            string want = "IDMClone 1.3.0 is a download manager.\r\n\r\nWhat's new\r\n\r\n" +
+                          "• Automatic updates. Help > Check for updates.\r\n" +
+                          "• Subtitles. HLS, DASH and <track>; also .txt, .htm files.\r\n" +
+                          "• Proxy and network\r\n  • A separate proxy for each protocol.\r\n\r\n" +
+                          "Install\r\n\r\n1. Download IDMClone-Setup.exe and run it.\r\n" +
+                          "   • Chromium: \"Load unpacked\" from the browser\\extension folder.\r\n\r\n" +
+                          "  SHA-256: " + new string('c', 64) + "\r\n\r\n" +
+                          "See the release page and logo.\r\n" +
+                          "codigo\r\n" +
+                          "cursiva and _keep_this_ and *.mp3 or a*b, 2 * 3 = 6, *literal*.\r\nNotes";
+            CheckEq(want, Updater.PlainNotes(md), "Markdown -> texto");
+            Check(Updater.PlainNotes(null) == null && Updater.PlainNotes("") == "", "vacías");
+            CheckEq("Uno\r\nDos", Updater.PlainNotes("Uno\nDos"), "texto normal intacto");
+
+            // Casos de la revisión: nombres con "__", enlaces con paréntesis, código con `, y lo que pone GitHub.
+            CheckEq("file __init__.py and __init__ method, a **b** c\\d", Updater.PlainNotes("file `__init__.py` and `__init__` method, `a **b** c\\d`"), "dentro de `código` no se toca nada");
+            CheckEq("bold and snake__case__name", Updater.PlainNotes("__bold__ and snake__case__name"), "__ solo fuera de palabras");
+            CheckEq("see link after", Updater.PlainNotes("see [link](https://en.wikipedia.org/wiki/Foo_(bar)) after"), "URL con paréntesis");
+            CheckEq("code with ` tick and x", Updater.PlainNotes("``code with ` tick`` and `` x ``"), "código con dobles comillas invertidas");
+            CheckEq("What's Changed\r\n• Fix by @ana\r\n\r\nquote\r\nold new\r\n• done\r\n• todo\r\nMore", Updater.PlainNotes(
+                "<!-- Release notes generated using configuration in .github/release.yml\nat main -->\n\n## What's Changed\n* Fix by @ana\n\n---\n\n> quote\n~~old~~ new\n- [x] done\n- [ ] todo\n<details><summary>More</summary>"),
+                "notas generadas por GitHub, citas, separador, tachado, tareas, <details>");
+            CheckEq("Col 1   Col 2\r\na   b", Updater.PlainNotes("| Col 1 | Col 2 |\n|---|:---:|\n| a | b |"), "tabla");
+            CheckEq("<track> y <video>", Updater.PlainNotes("<track> y <video>"), "etiquetas que son texto se quedan");
+            CheckEq("<!-- sin cerrar", Updater.PlainNotes("<!-- sin cerrar"), "comentario sin cerrar");
+            CheckEq("`tick` y code", Updater.PlainNotes("\\`tick\\` y `code`"), "comilla invertida escapada");
+            CheckEq("C:\\IDMClone\\", Updater.PlainNotes("`C:\\IDMClone\\`"), "ruta con barra final dentro de `código`");
+            CheckEq("a\\ b`", Updater.PlainNotes("`a\\` b`"), "dentro del código la barra no escapa la comilla");
+            CheckEq("\\code", Updater.PlainNotes("\\\\`code`"), "barra escapada antes del código");
+            CheckEq("x 5 y", Updater.PlainNotes("x \uE1005\uE101 y"), "marcas internas en el texto: no fallan");
+            CheckEq("a 99999999999 b", Updater.PlainNotes("a \uE10099999999999\uE101 b \uE02A"), "marcas internas con números enormes");
+            CheckEq("a   b\r\n1   2", Updater.PlainNotes("| a | b |\n|-|-|\n| 1 | 2 |"), "tabla con separador de un guion");
+            CheckEq("Sum\r\nbody\r\nTitulo", Updater.PlainNotes("<details><summary>Sum</summary>body</details>\nTitulo\n======"), "<details> y título subrayado");
+
+            // Textos enormes o raros: sin bloquear (antes una línea de 60.000 "![" tardaba más de un minuto).
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            Updater.PlainNotes(new StringBuilder().Insert(0, "![", 60000).ToString());
+            Updater.PlainNotes(new StringBuilder().Insert(0, "[a](", 999).ToString());       // justo por debajo del límite de línea
+            Updater.PlainNotes(new StringBuilder().Insert(0, "**a ", 999).ToString());
+            Updater.PlainNotes(new StringBuilder().Insert(0, "`a ", 1333).ToString());
+            Updater.PlainNotes(new StringBuilder().Insert(0, "[a](x\n", 20000).ToString());   // muchas líneas
+            Check(sw.Elapsed.TotalSeconds < 3, "Textos enormes: " + sw.Elapsed.TotalSeconds.ToString("0.0") + " s");
+
+            // Por Parse: GitHub se limpia (y el SHA-256 de las notas se sigue encontrando); el manifiesto propio, tal cual.
+            string sha = new string('d', 64);
+            UpdateInfo g = Updater.Parse("{\"tag_name\":\"v2.0\",\"body\":\"## Nuevo\\n- **Uno**\\n`SHA-256: " + sha + "`\",\"assets\":[{\"name\":\"IDMClone-Setup.exe\",\"browser_download_url\":\"https://x/IDMClone-Setup.exe\"}]}", null);
+            CheckEq("Nuevo\r\n• Uno\r\nSHA-256: " + sha, g.Notes, "notas de GitHub");
+            CheckEq(sha, g.Sha256, "SHA-256 de las notas limpias");
+            UpdateInfo m = Updater.Parse("{\"version\":\"2.0\",\"url\":\"https://x/s.exe\",\"sha256\":\"" + sha + "\",\"notes\":\"- **tal cual**\"}", null);
+            CheckEq("- **tal cual**", m.Notes, "manifiesto propio sin tocar");
         }
 
         static void TU_FetchNewerOlderSame()
