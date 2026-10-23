@@ -10,7 +10,7 @@
     :root { --bg:#16191e; --card:#20242b; --text:#e6e9ee; --muted:#a2abb8; --line:#363c46; --accent:#5aa2ff; --ok:#4cc46d; --code:#2b3038; }
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font: 15px/1.55 "Segoe UI", system-ui, sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--text); font: 15px/1.55 "Segoe UI", "Microsoft YaHei UI", "Yu Gothic UI", system-ui, sans-serif; }
   header { background: linear-gradient(90deg,#185cb2,#0a2b62); color:#fff; padding:22px 16px; }
   header .in, main { max-width: 860px; margin: 0 auto; }
   header h1 { margin:0 0 4px; font-size: 22px; }
@@ -40,37 +40,132 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>Añadir la extensión «IDMClone Integration»</h1>
-  <p>Un solo paso, una sola vez. Después IDMClone capturará las descargas y los vídeos de tu navegador.</p>
+  <h1 id="h1"></h1>
+  <p id="sub"></p>
 </div></header>
 <main>
-  <p class="note">Los navegadores solo instalan solas las extensiones de su tienda; mientras tanto, se añade así.
-     Elige tu navegador:</p>
+  <p class="note" id="intro"></p>
   <div class="tabs" id="tabs"></div>
   <div class="card"><ol id="steps"></ol></div>
-  <p class="note" style="margin-top:16px">La ventana del instalador marcará <span class="ok">✓</span> en cuanto la extensión
-     se conecte con IDMClone. Si el navegador avisa de que hay extensiones en modo de desarrollador, es normal: es la tuya.</p>
+  <p class="note" style="margin-top:16px" id="foot"></p>
 </main>
 <script>
   var PATH = "{{RUTA}}";
   var DEFAULT = "{{NAVEGADOR}}";
+  // Idioma: el del instalador ("es", "en", "zh", "ja"). Abierta tal cual (sin instalar), en español.
+  var LANG = "{{IDIOMA}}";
   // Navegadores donde la extensión ya está publicada en su tienda: el instalador la registró y basta con activarla.
   var STORE = { chrome: "{{TIENDA_CHROME}}" === "1", brave: "{{TIENDA_CHROME}}" === "1", vivaldi: "{{TIENDA_CHROME}}" === "1", edge: "{{TIENDA_EDGE}}" === "1" };
-  var B = {
-    brave:   { name: "Brave", url: "brave://extensions", dev: "Modo Desarrollador (arriba a la derecha)", load: "Cargar desempaquetada" },
-    chrome:  { name: "Google Chrome", url: "chrome://extensions", dev: "Modo de desarrollador (arriba a la derecha)", load: "Cargar extensión sin empaquetar" },
-    edge:    { name: "Microsoft Edge", url: "edge://extensions", dev: "Modo de desarrollador (en el panel de la izquierda)", load: "Cargar desempaquetada" },
-    opera:   { name: "Opera", url: "opera://extensions", dev: "Modo de desarrollador (arriba a la derecha)", load: "Cargar extensión sin empaquetar" },
-    vivaldi: { name: "Vivaldi", url: "vivaldi://extensions", dev: "Modo desarrollador (arriba a la derecha)", load: "Cargar desempaquetado",
-               note: "Vivaldi pregunta «¿Descargar...?» antes de pasar cada descarga a IDMClone: para que vaya directa, marca «Guardar archivos siempre en la carpeta por defecto» en Configuración › Descargas (es la misma casilla que trae ese aviso)." },
-    firefox: { name: "Mozilla Firefox", url: "about:debugging#/runtime/this-firefox", firefox: true }
+
+  // Textos de la guía. En los pasos, {b} es el nombre del navegador y {x} el botón o el interruptor que hay que pulsar.
+  var T = {
+    es: { html: "es", title: "Añadir la extensión de IDMClone", h1: "Añadir la extensión «IDMClone Integration»",
+          sub: "Un solo paso, una sola vez. Después IDMClone capturará las descargas y los vídeos de tu navegador.",
+          intro: "Los navegadores solo instalan solas las extensiones de su tienda; mientras tanto, se añade así. Elige tu navegador:",
+          foot: "La ventana del instalador marcará <span class='ok'>✓</span> en cuanto la extensión se conecte con IDMClone. Si el navegador avisa de que hay extensiones en modo de desarrollador, es normal: es la tuya.",
+          copy: "Copiar", copied: "Copiado ✓", done: "Listo.",
+          storeClose: "Cierra {b} del todo y vuelve a abrirlo.",
+          storeNotice: "Arriba a la derecha aparecerá un aviso {x} o «Nueva extensión añadida» de IDMClone Integration.", storeNoticeBtn: "Se necesita acción",
+          storeEnable: "Pulsa {x} <span class='note'>(si no ves el aviso: menú › Extensiones, y activa IDMClone Integration)</span>.", storeEnableBtn: "Activar extensión",
+          storeDone: "Funciona también en las páginas que ya tenías abiertas.",
+          url: "Copia esta dirección, pégala en la barra de direcciones de {b} y pulsa Intro:",
+          ffLoad: "Pulsa {x}",
+          ffPick: "Pega la ruta de la carpeta en el cuadro de abrir archivo, entra en ella y elige <code>manifest.json</code>:",
+          ffDone: "<span class='note'>En Firefox queda solo hasta que lo cierres; para que sea permanente hace falta la versión firmada de addons.mozilla.org.</span>",
+          dev: "Activa el interruptor {x}", load: "Pulsa {x}",
+          pick: "En la ventana para elegir carpeta, pega esta ruta en la barra de arriba, pulsa Intro y luego «Seleccionar carpeta» <span class='note'>(el instalador ya la dejó copiada)</span>:",
+          loaded: "Aparecerá «IDMClone Integration»; funciona también en las páginas que ya tenías abiertas.",
+          topRight: "arriba a la derecha", leftPanel: "abajo, en el panel de la izquierda" },
+    en: { html: "en", title: "Add the IDMClone extension", h1: "Add the “IDMClone Integration” extension",
+          sub: "One step, only once. After that, IDMClone will catch the downloads and videos from your browser.",
+          intro: "Browsers only install extensions from their own store automatically; until then, add it like this. Choose your browser:",
+          foot: "The installer window will show <span class='ok'>✓</span> as soon as the extension connects to IDMClone. If the browser warns that there are extensions in developer mode, that's normal: it's yours.",
+          copy: "Copy", copied: "Copied ✓", done: "Done.",
+          storeClose: "Close {b} completely and open it again.",
+          storeNotice: "At the top right you'll see a notice {x} or “New extension added” for IDMClone Integration.", storeNoticeBtn: "Action required",
+          storeEnable: "Click {x} <span class='note'>(if you don't see the notice: menu › Extensions, and turn on IDMClone Integration)</span>.", storeEnableBtn: "Enable extension",
+          storeDone: "It also works on the pages you already had open.",
+          url: "Copy this address, paste it into the address bar of {b} and press Enter:",
+          ffLoad: "Click {x}",
+          ffPick: "Paste the folder path into the Open File dialog, go into the folder and choose <code>manifest.json</code>:",
+          ffDone: "<span class='note'>In Firefox it only stays until you close the browser; to keep it for good you need the signed version from addons.mozilla.org.</span>",
+          dev: "Turn on the {x} switch", load: "Click {x}",
+          pick: "In the folder window, paste this path into the bar at the top, press Enter and then click “Select Folder” <span class='note'>(the installer already copied it)</span>:",
+          loaded: "“IDMClone Integration” will appear; it also works on the pages you already had open.",
+          topRight: "top right", leftPanel: "at the bottom of the left panel" },
+    zh: { html: "zh-CN", title: "添加 IDMClone 扩展", h1: "添加“IDMClone Integration”扩展",
+          sub: "只需一步，只需一次。之后 IDMClone 会接管浏览器中的下载和视频。",
+          intro: "浏览器只会自动安装其商店中的扩展；在那之前，请按以下步骤添加。选择你的浏览器：",
+          foot: "扩展一连接到 IDMClone，安装程序窗口就会显示 <span class='ok'>✓</span>。如果浏览器提示有处于开发者模式的扩展，这是正常的：那就是你的扩展。",
+          copy: "复制", copied: "已复制 ✓", done: "完成。",
+          storeClose: "完全关闭 {b}，然后重新打开。",
+          storeNotice: "右上角会出现 IDMClone Integration 的提示 {x} 或“已添加新扩展程序”。", storeNoticeBtn: "需要执行操作",
+          storeEnable: "点击 {x}<span class='note'>（如果没有看到提示：菜单 › 扩展程序，然后启用 IDMClone Integration）</span>。", storeEnableBtn: "启用扩展程序",
+          storeDone: "在你已经打开的页面中也能使用。",
+          url: "复制此地址，粘贴到 {b} 的地址栏中，然后按 Enter 键：",
+          ffLoad: "点击 {x}",
+          ffPick: "在打开文件的窗口中粘贴文件夹路径，进入该文件夹，然后选择 <code>manifest.json</code>：",
+          ffDone: "<span class='note'>在 Firefox 中，它只会保留到你关闭浏览器为止；要一直保留，需要 addons.mozilla.org 上的已签名版本。</span>",
+          dev: "打开 {x} 开关", load: "点击 {x}",
+          pick: "在选择文件夹的窗口中，把此路径粘贴到上方的地址栏，按 Enter 键，然后点击“选择文件夹”<span class='note'>（安装程序已经帮你复制好了）</span>：",
+          loaded: "会出现“IDMClone Integration”；在你已经打开的页面中也能使用。",
+          topRight: "右上角", leftPanel: "左侧面板底部" },
+    ja: { html: "ja", title: "IDMClone 拡張機能の追加", h1: "「IDMClone Integration」拡張機能を追加する",
+          sub: "最初に一度だけ行う簡単な手順です。その後は、ブラウザーのダウンロードと動画を IDMClone が受け取ります。",
+          intro: "ブラウザーが自動でインストールするのは、それぞれのストアの拡張機能だけです。それまでは、次の方法で追加してください。ブラウザーを選んでください：",
+          foot: "拡張機能が IDMClone に接続されると、インストーラーの画面に <span class='ok'>✓</span> が表示されます。デベロッパー モードの拡張機能があるという警告が出ても問題ありません。それがこの拡張機能です。",
+          copy: "コピー", copied: "コピーしました ✓", done: "完了です。",
+          storeClose: "{b} を完全に閉じてから、もう一度開きます。",
+          storeNotice: "右上に IDMClone Integration の通知 {x} または「新しい拡張機能が追加されました」が表示されます。", storeNoticeBtn: "操作が必要です",
+          storeEnable: "{x} をクリックします<span class='note'>（通知が表示されない場合は、メニュー › 拡張機能 で IDMClone Integration を有効にします）</span>。", storeEnableBtn: "拡張機能を有効にする",
+          storeDone: "すでに開いていたページでも使えます。",
+          url: "このアドレスをコピーして {b} のアドレスバーに貼り付け、Enter キーを押します：",
+          ffLoad: "{x} をクリックします",
+          ffPick: "ファイルを開く画面にフォルダーのパスを貼り付けてそのフォルダーに移動し、<code>manifest.json</code> を選びます：",
+          ffDone: "<span class='note'>Firefox では、ブラウザーを閉じるまでの間だけ有効です。ずっと使うには addons.mozilla.org の署名済み版が必要です。</span>",
+          dev: "{x} のスイッチをオンにします", load: "{x} をクリックします",
+          pick: "フォルダーを選ぶ画面で、上部のバーにこのパスを貼り付けて Enter キーを押し、「フォルダーの選択」をクリックします<span class='note'>（パスはインストーラーがコピー済みです）</span>：",
+          loaded: "「IDMClone Integration」が表示されます。すでに開いていたページでも使えます。",
+          topRight: "右上", leftPanel: "左側のパネルの下部" }
   };
+  var L = T[LANG] || T.es;
+  var LK = T[LANG] ? LANG : "es";
+
+  // Nombres de los botones tal como los muestra cada navegador en cada idioma (comprobados en los navegadores reales).
+  // pos: dónde está el interruptor del modo desarrollador ("topRight" o "leftPanel").
+  var B = {
+    brave:   { name: "Brave", url: "brave://extensions", pos: "topRight",
+               dev:  { es: "Modo Desarrollador", en: "Developer mode", zh: "开发者模式", ja: "デベロッパー モード" },
+               load: { es: "Cargar desempaquetada", en: "Load unpacked", zh: "加载未打包的扩展程序", ja: "パッケージ化されていない拡張機能を読み込む" } },
+    chrome:  { name: "Google Chrome", url: "chrome://extensions", pos: "topRight",
+               dev:  { es: "Modo de desarrollador", en: "Developer mode", zh: "开发者模式", ja: "デベロッパー モード" },
+               load: { es: "Cargar extensión sin empaquetar", en: "Load unpacked", zh: "加载未打包的扩展程序", ja: "パッケージ化されていない拡張機能を読み込む" } },
+    edge:    { name: "Microsoft Edge", url: "edge://extensions", pos: "leftPanel",
+               dev:  { es: "Modo de desarrollador", en: "Developer mode", zh: "开发人员模式", ja: "開発者モード" },
+               load: { es: "Cargar desempaquetada", en: "Load unpacked", zh: "加载解压缩的扩展", ja: "展開して読み込み" } },
+    opera:   { name: "Opera", url: "opera://extensions", pos: "topRight",
+               dev:  { es: "Modo de desarrollador", en: "Developer mode", zh: "开发者模式", ja: "開発者モード" },
+               load: { es: "Cargar extensión sin empaquetar", en: "Load unpacked", zh: "加载已解压的扩展程序", ja: "パッケージ化されていない拡張機能を読み込む" } },
+    vivaldi: { name: "Vivaldi", url: "vivaldi://extensions", pos: "topRight",
+               dev:  { es: "Modo desarrollador", en: "Developer mode", zh: "开发者模式", ja: "デベロッパーモード" },
+               load: { es: "Cargar desempaquetado", en: "Load unpacked", zh: "加载已解包扩展", ja: "非パッケージ拡張機能を読み込む" },
+               note: { es: "Vivaldi pregunta «¿Descargar...?» antes de pasar cada descarga a IDMClone: para que vaya directa, marca «Guardar archivos siempre en la carpeta por defecto» en Configuración › Descargas (es la misma casilla que trae ese aviso).",
+                       en: "Vivaldi asks “Download...?” before passing each download to IDMClone. To send them straight to IDMClone, check “Save Files to Default Location Without Asking” in Settings › Downloads (it's the same checkbox shown in that prompt).",
+                       zh: "Vivaldi 会在把每个下载交给 IDMClone 之前先询问是否下载。要让下载直接交给 IDMClone，请在“设置 › 下载”中勾选“保存到默认位置，不再询问”（就是那个提示里的同一个复选框）。",
+                       ja: "Vivaldi は、ダウンロードを IDMClone に渡す前に毎回ダウンロードするかどうかを確認します。直接 IDMClone に渡すには、「設定 › ダウンロード」で「確認せずに既定のダウンロード先にファイルを保存する」をオンにします（その確認画面にあるのと同じチェックボックスです）。" } },
+    firefox: { name: "Mozilla Firefox", url: "about:debugging#/runtime/this-firefox", firefox: true,
+               load: { es: "Cargar complemento temporal…", en: "Load Temporary Add-on…", zh: "临时加载附加组件…", ja: "一時的なアドオンを読み込む..." } }
+  };
+
+  function fill(s, b, x) { return s.replace("{b}", b || "").replace("{x}", x || ""); }
+  function mockBtn(t) { return "<span class='mock'><span class='btn'>" + esc(t) + "</span></span>"; }
+  function mockToggle(t) { return "<span class='mock'><span class='toggle'></span> " + esc(t) + "</span>"; }
 
   function copyBtn(text) {
     var b = document.createElement("button");
-    b.className = "copy"; b.textContent = "Copiar";
+    b.className = "copy"; b.textContent = L.copy;
     b.onclick = function () {
-      var done = function () { b.textContent = "Copiado ✓"; b.classList.add("done"); };
+      var done = function () { b.textContent = L.copied; b.classList.add("done"); };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
       function fallback() { var t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); done(); } catch (e) {} t.remove(); }
     };
@@ -84,37 +179,35 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
   function show(id) {
-    var b = B[id], ol = document.getElementById("steps");
+    var b = B[id], ol = document.getElementById("steps"), name = esc(b.name);
     ol.innerHTML = "";
     [].forEach.call(document.querySelectorAll("#tabs button"), function (t) { t.classList.toggle("on", t.dataset.id === id); });
     if (STORE[id]) {
-      ol.appendChild(li("Cierra " + esc(b.name) + " del todo y vuelve a abrirlo."));
-      ol.appendChild(li("Arriba a la derecha aparecerá un aviso <span class='mock'><span class='btn'>Se necesita acción</span></span> " +
-                        "o «Nueva extensión añadida» de IDMClone Integration."));
-      ol.appendChild(li("Pulsa <span class='mock'><span class='btn'>Activar extensión</span></span> " +
-                        "<span class='note'>(si no ves el aviso: menú › Extensiones, y activa IDMClone Integration)</span>."));
-      ol.appendChild(li("<span class='ok'>Listo.</span> Funciona también en las páginas que ya tenías abiertas."));
+      ol.appendChild(li(fill(L.storeClose, name)));
+      ol.appendChild(li(fill(L.storeNotice, name, mockBtn(L.storeNoticeBtn))));
+      ol.appendChild(li(fill(L.storeEnable, name, mockBtn(L.storeEnableBtn))));
+      ol.appendChild(li("<span class='ok'>" + L.done + "</span> " + L.storeDone));
       return;
     }
-    ol.appendChild(li("Copia esta dirección, pégala en la barra de direcciones de " + esc(b.name) + " y pulsa Intro:" +
-                      "<div class='row'><code>" + esc(b.url) + "</code></div>", b.url));
+    ol.appendChild(li(fill(L.url, name) + "<div class='row'><code>" + esc(b.url) + "</code></div>", b.url));
     if (b.firefox) {
-      ol.appendChild(li("Pulsa <span class='mock'><span class='btn'>Cargar complemento temporal...</span></span>"));
-      ol.appendChild(li("Pega la ruta de la carpeta en el cuadro de abrir archivo, entra en ella y elige <code>manifest.json</code>:" +
-                        "<div class='row'><span class='path'>" + esc(PATH) + "</span></div>", PATH));
-      ol.appendChild(li("<span class='ok'>Listo.</span> <span class='note'>En Firefox queda solo hasta que lo cierres; para que sea permanente " +
-                        "hace falta la versión firmada de addons.mozilla.org.</span>"));
+      ol.appendChild(li(fill(L.ffLoad, name, mockBtn(b.load[LK]))));
+      ol.appendChild(li(L.ffPick + "<div class='row'><span class='path'>" + esc(PATH) + "</span></div>", PATH));
+      ol.appendChild(li("<span class='ok'>" + L.done + "</span> " + L.ffDone));
       return;
     }
-    ol.appendChild(li("Activa el interruptor <span class='mock'><span class='toggle'></span> " + esc(b.dev.split(" (")[0]) + "</span>" +
-                      "<div class='note'>" + esc(b.dev.indexOf("(") > 0 ? b.dev.slice(b.dev.indexOf("(") + 1, -1) : "") + "</div>"));
-    ol.appendChild(li("Pulsa <span class='mock'><span class='btn'>" + esc(b.load) + "</span></span>"));
-    ol.appendChild(li("En la ventana para elegir carpeta, pega esta ruta en la barra de arriba, pulsa Intro y luego «Seleccionar carpeta»" +
-                      " <span class='note'>(el instalador ya la dejó copiada)</span>:<div class='row'><span class='path'>" + esc(PATH) + "</span></div>", PATH));
-    ol.appendChild(li("<span class='ok'>Listo.</span> Aparecerá «IDMClone Integration»; funciona también en las páginas que ya tenías abiertas." +
-                      (b.note ? "<div class='note'>" + esc(b.note) + "</div>" : "")));
+    ol.appendChild(li(fill(L.dev, name, mockToggle(b.dev[LK])) + "<div class='note'>" + esc(L[b.pos]) + "</div>"));
+    ol.appendChild(li(fill(L.load, name, mockBtn(b.load[LK]))));
+    ol.appendChild(li(L.pick + "<div class='row'><span class='path'>" + esc(PATH) + "</span></div>", PATH));
+    ol.appendChild(li("<span class='ok'>" + L.done + "</span> " + L.loaded + (b.note ? "<div class='note'>" + esc(b.note[LK]) + "</div>" : "")));
   }
 
+  document.documentElement.lang = L.html;
+  document.title = L.title;
+  document.getElementById("h1").textContent = L.h1;
+  document.getElementById("sub").textContent = L.sub;
+  document.getElementById("intro").textContent = L.intro;
+  document.getElementById("foot").innerHTML = L.foot;
   var tabs = document.getElementById("tabs");
   Object.keys(B).forEach(function (id) {
     var t = document.createElement("button"); t.textContent = B[id].name; t.dataset.id = id;

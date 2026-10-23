@@ -64,7 +64,7 @@ namespace IDMClone.Tests
                 Entry(z, "browser/extension/background.js", "// fondo");
                 Entry(z, "Languages/idmclone_en.lng", "[IDMClone]\nLANGUAGE=English\n[Textos]\n");
                 Entry(z, "LICENCIA.txt", "Licencia de prueba");
-                Entry(z, "browser/guia.html", "RUTA={{RUTA}};NAV={{NAVEGADOR}};CWS={{TIENDA_CHROME}};EDGE={{TIENDA_EDGE}}");
+                Entry(z, "browser/guia.html", "LANG={{IDIOMA}};RUTA={{RUTA}};NAV={{NAVEGADOR}};CWS={{TIENDA_CHROME}};EDGE={{TIENDA_EDGE}}");
                 Entry(z, "../fuera.txt", "no debe salir de la carpeta");
             }
             return zipPath;
@@ -110,7 +110,16 @@ namespace IDMClone.Tests
             Check((string)RegValue(StoreIds.EdgeExternalKey + "\\" + StoreIds.EdgeAddons, "update_url") == StoreIds.EdgeUpdateUrl, "Clave externa de Edge");
             // Guía con la ruta de la extensión (escapada para JavaScript) y las tiendas publicadas.
             string guide = File.ReadAllText(Installer.GuidePath(dir));
-            Check(guide.StartsWith("RUTA=" + Installer.ExtensionDir(dir).Replace("\\", "\\\\") + ";NAV=") && guide.EndsWith("CWS=1;EDGE=1"), "Guía: " + guide);
+            string lang = IDMClone.Setup.SetupProgram.SetupLanguage(System.Globalization.CultureInfo.CurrentUICulture) ?? "es"; // la del instalador
+            Check(guide.StartsWith("LANG=" + lang + ";RUTA=" + Installer.ExtensionDir(dir).Replace("\\", "\\\\") + ";NAV=") && guide.EndsWith("CWS=1;EDGE=1"), "Guía: " + guide);
+            // En otro idioma (el instalador se muestra en el de Windows): la guía también.
+            try
+            {
+                Installer.GuideLanguage = "zh";
+                Installer.Install(o, null);
+                Check(File.ReadAllText(Installer.GuidePath(dir)).StartsWith("LANG=zh;"), "Guía en chino: " + File.ReadAllText(Installer.GuidePath(dir)));
+            }
+            finally { Installer.GuideLanguage = null; }
             Check(File.ReadAllBytes(manifest)[0] == (byte)'{', "El manifiesto no debe llevar BOM");
             foreach (string b in Installer.ChromiumHostKeys)
                 Check(RegDefault(b + @"\com.idmclone.host") == manifest, "Sin registrar en " + b);

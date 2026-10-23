@@ -259,12 +259,16 @@ namespace IDMClone.Setup
         public static string GuidePath(string dir) { return Path.Combine(dir, @"browser\guia.html"); }
         public static string ExtensionDir(string dir) { return Path.Combine(dir, @"browser\extension"); }
 
+        // Idioma de la guía: "es", "en", "zh" o "ja". null = el del instalador (el de Windows, como SetupProgram).
+        public static string GuideLanguage;
+
         static void WriteGuide(string dir)
         {
             string t = PayloadText("browser/guia.html");
             if (t == null) return;
             string ext = ExtensionDir(dir).Replace("\\", "\\\\").Replace("\"", "\\\"");
-            t = t.Replace("{{RUTA}}", ext).Replace("{{NAVEGADOR}}", DefaultBrowserId())
+            string lang = GuideLanguage ?? SetupProgram.SetupLanguage(System.Globalization.CultureInfo.CurrentUICulture) ?? "es";
+            t = t.Replace("{{RUTA}}", ext).Replace("{{NAVEGADOR}}", DefaultBrowserId()).Replace("{{IDIOMA}}", lang)
                  .Replace("{{TIENDA_CHROME}}", string.IsNullOrEmpty(StoreIds.ChromeWebStore) ? "" : "1")
                  .Replace("{{TIENDA_EDGE}}", string.IsNullOrEmpty(StoreIds.EdgeAddons) ? "" : "1");
             File.WriteAllText(GuidePath(dir), t, new UTF8Encoding(false));
