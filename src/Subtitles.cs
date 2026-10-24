@@ -430,14 +430,7 @@ namespace IDMClone
             string outPath = Path.Combine(dir, Path.GetFileNameWithoutExtension(_item.FilePath) + (ext ?? Path.GetExtension(_item.FilePath)));
             File.WriteAllBytes(outPath, data);
             if (ext != null) SetOutput(outPath);
-            _item.TempPath = outPath;
-            MoveToDestination();
-            DeleteMediaWork(_item, _cfg);
-            long size = new FileInfo(_item.FilePath).Length;
-            lock (_item.Sync) { _item.Segments.Clear(); _item.Segments.Add(new Segment(0, size, size)); }
-            _item.Size = size;
-            _item.Status = DownloadStatus.Complete;
-            _item.DeleteState();
+            FinishMedia(outPath); // con "Información del archivo" abierto, espera ahí a que se confirme
             SetInfo(ci, "Terminada");
         }
 

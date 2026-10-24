@@ -426,23 +426,36 @@ namespace IDMClone
             catch { Msg.Show(this, "La ruta no es válida.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); return false; }
             if (string.IsNullOrEmpty(Path.GetFileName(wanted))) { Msg.Show(this, "Escribe un nombre de archivo.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); return false; }
 
-            if (!string.Equals(wanted, _it.FilePath, StringComparison.OrdinalIgnoreCase))
+            // Retenida en la temporal: si mientras tanto apareció un archivo con su nombre, también se pregunta.
+            if (!string.Equals(wanted, _it.FilePath, StringComparison.OrdinalIgnoreCase) || (_it.HeldInTemp && File.Exists(wanted)))
             {
                 bool overwrite = false;
                 if (File.Exists(wanted))
                 {
-                    DialogResult r = Msg.Show(this,
+                    // Como IDM: "Sí" reemplaza, "No" abre "Guardar como" para elegir otro nombre y "Cancelar" no añade la descarga.
+                    DialogResult r = ExistsHook != null ? ExistsHook(wanted) : Msg.Show(this,
                         Path.GetFileName(wanted) + " ya existe en tu ordenador. ¿Quieres reemplazar el archivo?\n\n" +
-                        "Pulsa \"Sí\" para reemplazar, \"No\" para guardar el archivo con un nombre diferente, \"Cancelar\" para volver.",
+                        "Pulsa \"Sí\" para reemplazar, \"No\" para guardar el archivo con un nombre diferente, \"Cancelar\" para no añadir esta descarga.",
                         "IDMClone", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-                    if (r == DialogResult.Cancel) return false;
-                    overwrite = r == DialogResult.Yes;
+                    if (Gone) return false; // se cerró mientras preguntaba (al salir de IDMClone): ya está cancelada
+                    if (r != DialogResult.Yes && r != DialogResult.No) { Cancel(); return false; }
+                    if (r == DialogResult.Yes) overwrite = true;
+                    else
+                    {
+                        string other = AskSaveAs(wanted);
+                        if (Gone || other == null) return false; // cerró "Guardar como": vuelve al diálogo
+                        wanted = other;
+                        overwrite = File.Exists(wanted); // Windows ya preguntó si reemplazarlo
+                    }
                 }
                 string old = _it.FilePath;
-                string final = overwrite ? wanted : _mgr.ReservePath(wanted, _it);
-                if (_it.Status == DownloadStatus.Complete)
+                // Retenida: el archivo se mueve al confirmar, sin apartar la ruta con uno vacío (lo estorbaría).
+                // (Igual con una ya terminada sin carpeta temporal, que se mueve ahora con MoveRename.)
+                string final = overwrite ? wanted : _it.HeldInTemp || _it.Status == DownloadStatus.Complete ? _mgr.FreePath(wanted, _it) : _mgr.ReservePath(wanted, _it);
+                if (_it.Status == DownloadStatus.Complete && !_it.HeldInTemp)
                 {
-                    // Ya terminó mientras se mostraba el diálogo: el archivo está en su destino y hay que moverlo.
+                    // Ya terminó mientras se mostraba el diálogo sin carpeta temporal: el archivo está en su destino y hay
+                    // que moverlo. (Con la temporal se queda en ella hasta confirmar: basta con cambiar la ruta.)
                     try
                     {
                         if (overwrite && File.Exists(final)) File.Delete(final);
@@ -478,11 +491,61 @@ namespace IDMClone
             return true;
         }
 
+        // Tras una ventana modal: el diálogo ya se cerró (al salir de IDMClone se cierra como Cancelar) o ya se decidió.
+        bool Gone { get { return Choice != null || _closing || IsDisposed; } }
+
+        // Respuesta al aviso de "ya existe" (pruebas; null = el aviso de verdad): Yes, No o Cancel.
+        public static Func<string, DialogResult> ExistsHook;
+        // Ruta elegida en "Guardar como" tras contestar "No" (pruebas; null = el cuadro de verdad). Devolver null = lo cerró.
+        public static Func<string, string> SaveAsHook;
+
+        // "No" en el aviso de "ya existe": el cuadro "Guardar como" de Windows en esa carpeta, como IDM.
+        string AskSaveAs(string wanted)
+        {
+            if (SaveAsHook != null) return SaveAsHook(wanted);
+            string ext = Path.GetExtension(wanted);
+            using (SaveFileDialog d = new SaveFileDialog())
+            {
+                d.InitialDirectory = Path.GetDirectoryName(wanted);
+                d.FileName = Path.GetFileNameWithoutExtension(wanted);
+                d.OverwritePrompt = true;
+                if (ext.Length > 1) { d.DefaultExt = ext.Substring(1); d.Filter = "*" + ext + "|*" + ext + "|*.*|*.*"; }
+                return d.ShowDialog(this) == DialogResult.OK ? d.FileName : null;
+            }
+        }
+
+        // Confirma la descarga: si ya terminó con el diálogo abierto, pasa ahora de la carpeta temporal a la ruta elegida.
+        // false = no se pudo mover (se dice y el diálogo sigue abierto para elegir otra ruta o cancelar).
+        // Mover a otra unidad copia el archivo entero: se hace en otro hilo y, si tarda, con el diálogo desactivado.
+        // Si mientras tanto se cierra el diálogo (al salir de IDMClone), OnFormClosed espera a que termine.
+        bool ConfirmItem()
+        {
+            Exception err = null;
+            System.Threading.Thread t = new System.Threading.Thread(delegate() { try { _mgr.Confirm(_it); } catch (Exception ex) { err = ex; } });
+            t.IsBackground = true;
+            _confirming = t;
+            t.Start();
+            if (!t.Join(300))
+            {
+                Enabled = false; UseWaitCursor = true;
+                while (!t.Join(50)) Application.DoEvents();
+                if (!IsDisposed) { UseWaitCursor = false; Enabled = true; }
+            }
+            _confirming = null;
+            if (err == null) return true;
+            // Ya cerrado: no queda diálogo donde elegir otra ruta, así que es Cancelar.
+            if (_closing || IsDisposed) Cancel();
+            else Msg.Show(this, err.Message, "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+
+        System.Threading.Thread _confirming;
+
         public void Start()
         {
-            if (!Apply()) return;
-            _mgr.Confirm(_it);
-            if (_it.Engine == null || !_it.Engine.IsRunning) _mgr.StartItem(_it);
+            if (!Apply() || !ConfirmItem()) return;
+            // Cerrado mientras se confirmaba (saliendo de IDMClone): confirmada, pero sin volver a lanzarla.
+            if (!_closing && _it.Status != DownloadStatus.Complete && (_it.Engine == null || !_it.Engine.IsRunning)) _mgr.StartItem(_it);
             Finish("start");
         }
 
@@ -491,18 +554,19 @@ namespace IDMClone
             if (!Apply()) return;
             int queue = DownloadItem.MainQueue;
             bool startQueue = false;
-            if (Visible && _it.Downloaded > 0 && _it.Status != DownloadStatus.Complete)
+            if (Visible && _it.Downloaded > 0)
             {
-                // Como IDM: si ya bajó una parte, avisa (y no sale el panel de colas: va a la cola principal).
+                // Como IDM: si ya bajó una parte (o todo), avisa (y no sale el panel de colas: va a la cola principal).
                 Msg.Show(this, "Pulsaste el botón \"Descargar Más Tarde\", pero actualmente IDMClone ya descargó una parte del archivo. " +
                     "IDMClone inicia una descarga mientras muestra el diálogo \"Información del archivo a descargar\". " +
                     "Puedes desactivar esta opción en \"Opciones -> Descargas\"", "Descargar más tarde", MessageBoxButtons.OK, MessageBoxIcon.None);
+                if (Gone) return;
             }
             else if (_cfg.ShowQueuePicker && Visible && _it.Status != DownloadStatus.Complete) // ya terminó: nada que encolar
             {
                 using (QueuePickForm q = new QueuePickForm(_mgr.Queues))
                 {
-                    if (q.ShowDialog(this) != DialogResult.OK) return;
+                    if (q.ShowDialog(this) != DialogResult.OK || Gone) return;
                     queue = q.Queue; startQueue = q.StartQueue;
                     if (q.DontAsk) { _cfg.ShowQueuePicker = false; _cfg.Save(); }
                 }
@@ -512,8 +576,8 @@ namespace IDMClone
             if (eng != null && eng.IsRunning) { eng.Stop(); eng.WaitForExit(10000); }
             if (_it.Status != DownloadStatus.Complete && _it.Status != DownloadStatus.Error) _it.Status = _it.Downloaded > 0 ? DownloadStatus.Paused : DownloadStatus.Queued;
             if (_it.Status != DownloadStatus.Complete) _it.Queue = queue; // una terminada no vuelve a la cola
-            _mgr.Confirm(_it);
-            if (startQueue && queue != DownloadItem.NoQueue) _mgr.StartQueue(queue);
+            if (!ConfirmItem()) return;
+            if (startQueue && queue != DownloadItem.NoQueue && !_closing) _mgr.StartQueue(queue);
             Finish("later");
         }
 
@@ -538,7 +602,10 @@ namespace IDMClone
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             _closing = true;
-            if (Choice == null) Cancel();
+            // Moviendo el archivo al confirmar: decide ConfirmItem (y lo que lo llamó) cuando termine, no Cancelar.
+            System.Threading.Thread t = _confirming;
+            if (t != null) t.Join();
+            else if (Choice == null) Cancel();
             base.OnFormClosed(e);
         }
 

@@ -215,7 +215,7 @@ Iniciar descarga=ダウンロード開始
 La ruta no es válida.=パスが正しくありません。
 Escribe un nombre de archivo.=ファイル名を入力してください。
 %s ya existe en tu ordenador. ¿Quieres reemplazar el archivo?=%s は既にコンピュータ上に存在します。ファイルを置き換えますか?
-Pulsa "Sí" para reemplazar, "No" para guardar el archivo con un nombre diferente, "Cancelar" para volver.=「はい」で置き換え、「いいえ」で別の名前で保存、「キャンセル」で戻ります。
+Pulsa "Sí" para reemplazar, "No" para guardar el archivo con un nombre diferente, "Cancelar" para no añadir esta descarga.=「はい」で置き換え、「いいえ」で別の名前で保存、「キャンセル」でこのダウンロードを追加しません。
 ; --- Agregar URL ---
 Ingresar nueva dirección a descargar=新しいダウンロードアドレスを入力
 Dirección:=アドレス:

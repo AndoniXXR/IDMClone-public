@@ -37,6 +37,13 @@ namespace IDMClone
 
         public static string MediaWorkDir(DownloadItem it, AppConfig cfg) { return Path.Combine(cfg.TempFolderOrDefault, it.Id); }
 
+        // Sin carpeta temporal, el alta apartó el nombre con un archivo vacío; el vídeo se arma en su carpeta de trabajo y
+        // llega entero al final, así que ese vacío solo estorbaría (acabaría como "_1"). Como PrepareWorkFile.
+        void DropEmptyReservation()
+        {
+            try { if (!_item.Overwrite && File.Exists(_item.FilePath) && new FileInfo(_item.FilePath).Length == 0) File.Delete(_item.FilePath); } catch { }
+        }
+
         public static void DeleteMediaWork(DownloadItem it, AppConfig cfg)
         {
             try
@@ -49,6 +56,7 @@ namespace IDMClone
 
         void RunMedia()
         {
+            DropEmptyReservation();
             if (_item.MediaKind == SubtitleKind) { RunSubtitles(); return; } // solo los subtítulos (Subtitles.cs)
             _item.Error = null;
             _item.Status = DownloadStatus.Connecting;
@@ -89,14 +97,7 @@ namespace IDMClone
             string output;
             try { output = AssembleMedia(dir, jobs, v, a); }
             catch (OperationCanceledException) { MediaPaused(); return; }
-            _item.TempPath = output;
-            MoveToDestination();
-            DeleteMediaWork(_item, _cfg);
-            long size = new FileInfo(_item.FilePath).Length;
-            lock (_item.Sync) { _item.Segments.Clear(); _item.Segments.Add(new Segment(0, size, size)); }
-            _item.Size = size;
-            _item.Status = DownloadStatus.Complete;
-            _item.DeleteState();
+            FinishMedia(output);
         }
 
         // --- Emisión en directo ---
@@ -180,12 +181,21 @@ namespace IDMClone
             }
             lock (_conns) foreach (ConnectionInfo c in _conns) c.Info = "Uniendo los trozos del vídeo...";
             string output = AssembleMedia(dir, done, v, a);
+            FinishMedia(output);
+        }
+
+        // El archivo unido (está en la carpeta de trabajo) pasa a su destino y se borra la carpeta de trabajo. Con
+        // "Información del archivo" aún abierto se queda ahí, con su carpeta, hasta que el usuario confirme (como IDM).
+        void FinishMedia(string output)
+        {
             _item.TempPath = output;
-            MoveToDestination();
-            DeleteMediaWork(_item, _cfg);
-            long size = new FileInfo(_item.FilePath).Length;
+            long size = new FileInfo(output).Length;
             lock (_item.Sync) { _item.Segments.Clear(); _item.Segments.Add(new Segment(0, size, size)); }
             _item.Size = size;
+            if (HoldIfPending()) return;
+            MoveToDestination();
+            PlaceSeparateAudio(_item, _cfg, FreePath);
+            if (_item.SeparateAudio == null) DeleteMediaWork(_item, _cfg); // (si el audio no se pudo mover, sigue ahí)
             _item.Status = DownloadStatus.Complete;
             _item.DeleteState();
         }
@@ -754,6 +764,7 @@ namespace IDMClone
         // Devuelve el archivo final (en la carpeta de trabajo); ajusta la extensión de FilePath.
         string AssembleMedia(string dir, List<MediaJob> jobs, MediaTrack v, MediaTrack a)
         {
+            _item.SeparateAudio = null;
             string vRaw = v != null ? ConcatTrack(dir, jobs, 'v', "video.raw") : null;
             string aRaw = a != null ? ConcatTrack(dir, jobs, 'a', "audio.raw") : null;
             string vFmt = vRaw != null ? Sniff(vRaw) : null, aFmt = aRaw != null ? Sniff(aRaw) : null;
@@ -796,17 +807,36 @@ namespace IDMClone
             string main = vRaw != null ? SingleTrack(dir, vRaw, vFmt, name, a == null) : SingleTrack(dir, aRaw, aFmt, name, true);
             if (vRaw != null && aRaw != null)
             {
-                string audioOut = SingleTrack(dir, aRaw, aFmt, name + " (audio)", true);
-                string dest = Path.Combine(Path.GetDirectoryName(_item.FilePath), Path.GetFileName(audioOut));
-                Directory.CreateDirectory(Path.GetDirectoryName(dest));
-                dest = PathReserver != null ? PathReserver(dest) : Util.UniquePath(dest);
-                MoveFile(audioOut, dest);
-                string note = _cfg.MergeAudioVideo
-                    ? "El video no se ha mezclado con el audio porque la secuencia de audio tiene un formato diferente. El audio se guardó aparte: " + Path.GetFileName(dest)
-                    : "Audio guardado aparte: " + Path.GetFileName(dest);
-                _item.Description = string.IsNullOrEmpty(_item.Description) ? note : _item.Description + " — " + note;
+                // Pasa junto al vídeo cuando pase él (FinishMedia; o al confirmar "Información del archivo").
+                _item.SeparateAudio = SingleTrack(dir, aRaw, aFmt, name + " (audio)", true);
             }
             return SetOutput(main);
+        }
+
+        // El audio guardado aparte va junto al vídeo, con el nombre de este + " (audio)". Si no se puede mover, el vídeo
+        // ya está en su sitio: la descarga no falla por eso; la nota de la descripción dice dónde quedó el audio.
+        internal static void PlaceSeparateAudio(DownloadItem it, AppConfig cfg, Func<string, string> free)
+        {
+            string audio = it.SeparateAudio;
+            if (string.IsNullOrEmpty(audio)) return;
+            string dest = Path.Combine(Path.GetDirectoryName(it.FilePath), Path.GetFileNameWithoutExtension(it.FilePath) + " (audio)" + Path.GetExtension(audio));
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                dest = free != null ? free(dest) : Util.UniquePath(dest);
+                MoveFile(audio, dest);
+            }
+            catch (Exception ex)
+            {
+                string fail = "No se pudo guardar el audio aparte junto al vídeo (" + ex.Message + "). Está en: " + audio;
+                it.Description = string.IsNullOrEmpty(it.Description) ? fail : it.Description + " — " + fail;
+                return;
+            }
+            it.SeparateAudio = null;
+            string note = cfg.MergeAudioVideo
+                ? "El video no se ha mezclado con el audio porque la secuencia de audio tiene un formato diferente. El audio se guardó aparte: " + Path.GetFileName(dest)
+                : "Audio guardado aparte: " + Path.GetFileName(dest);
+            it.Description = string.IsNullOrEmpty(it.Description) ? note : it.Description + " — " + note;
         }
 
         // Una pista sola: TS -> MP4 si se puede; MP4 fragmentado -> MP4 normal; WebM tal cual.

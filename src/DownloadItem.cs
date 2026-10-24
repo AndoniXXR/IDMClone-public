@@ -56,6 +56,12 @@ namespace IDMClone
         [ScriptIgnore] public bool ExitWhenDone, ShutdownWhenDone;
         // Mientras está abierto el diálogo "Información del archivo a descargar": aún no está en la lista.
         [ScriptIgnore] public volatile bool Pending;
+        // Terminó con "Información del archivo" aún abierto: el archivo sigue en la carpeta temporal (TempPath) hasta que
+        // el usuario confirme; entonces pasa a la ruta elegida (DownloadManager.Confirm). Como IDM.
+        [ScriptIgnore] public bool HeldInTemp;
+        // Vídeo con el audio guardado aparte: el archivo de audio, aún en la carpeta de trabajo, hasta que pasa junto al
+        // vídeo (DownloadEngine.PlaceSeparateAudio).
+        [ScriptIgnore] public string SeparateAudio;
         [ScriptIgnore] public bool LastRunByQueue; // la última ejecución la lanzó la cola
         [ScriptIgnore] public int StartedByQueueId = -1; // qué cola la lanzó
         [ScriptIgnore] public bool SyncUpdated;      // la cola de sincronización vio que cambió y la volvió a bajar

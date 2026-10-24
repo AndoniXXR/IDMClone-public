@@ -215,7 +215,7 @@ Iniciar descarga=Start Download
 La ruta no es válida.=The path is not valid.
 Escribe un nombre de archivo.=Type a file name.
 %s ya existe en tu ordenador. ¿Quieres reemplazar el archivo?=%s already exists on your computer. Do you want to replace the file?
-Pulsa "Sí" para reemplazar, "No" para guardar el archivo con un nombre diferente, "Cancelar" para volver.=Press "Yes" to replace, "No" to save the file with a different name, "Cancel" to go back.
+Pulsa "Sí" para reemplazar, "No" para guardar el archivo con un nombre diferente, "Cancelar" para no añadir esta descarga.=Press "Yes" to replace, "No" to save the file with a different name, "Cancel" to not add this download.
 ; --- Agregar URL ---
 Ingresar nueva dirección a descargar=Enter new address to download
 Dirección:=Address:

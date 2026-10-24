@@ -86,6 +86,8 @@ namespace IDMClone
 
         // Reserva una ruta libre (la da el gestor, que conoce las rutas de las demás descargas).
         public Func<string, string> PathReserver;
+        // Una ruta libre sin apartarla con un archivo vacío (para mover ahí el archivo terminado).
+        public Func<string, string> FreePath;
 
         public DownloadEngine(DownloadItem item, AppConfig cfg)
         {
@@ -289,8 +291,13 @@ namespace IDMClone
                         fs.SetLength(got);
                     _item.Size = got;
                 }
-                // Carpeta temporal: el archivo pasa a su destino ya completo (como el ensamblado de IDM).
-                if (!string.IsNullOrEmpty(_item.TempPath)) MoveToDestination();
+                // Carpeta temporal: el archivo pasa a su destino ya completo (como el ensamblado de IDM). Con
+                // "Información del archivo" aún abierto se queda en la temporal hasta que el usuario confirme.
+                if (!string.IsNullOrEmpty(_item.TempPath))
+                {
+                    if (HoldIfPending()) return; // lo coloca Confirm (con la fecha del servidor)
+                    MoveToDestination();
+                }
                 // "Establecer la fecha del archivo como la del servidor": ya en su sitio (copiar entre unidades
                 // pone la fecha de creación a "ahora").
                 if (_cfg.SetFileDateFromServer) ApplyServerDate(_item.FilePath, _item.LastModified);
@@ -352,27 +359,67 @@ namespace IDMClone
             Directory.CreateDirectory(Path.GetDirectoryName(WorkPath));
         }
 
+        // Terminó mientras se muestra "Información del archivo" (la descarga empezó con el diálogo abierto): como IDM, el
+        // archivo NO pasa a la carpeta de destino, que aún puede cambiar o no confirmarse; se queda en la temporal
+        // (HeldInTemp) y DownloadManager.Confirm lo coloca donde diga el usuario. Cancelar lo borra de ahí. Bajo el
+        // cerrojo de la descarga, con Confirm: o lo coloca este motor o lo coloca Confirm, nunca ninguno.
+        bool HoldIfPending()
+        {
+            lock (_item.Sync)
+            {
+                if (!_item.Pending) return false;
+                _item.HeldInTemp = true;
+                _item.Status = DownloadStatus.Complete;
+            }
+            return true;
+        }
+
         // Mueve el archivo terminado de la carpeta temporal a su destino. Si mientras tanto apareció otro
         // archivo con ese nombre, usa uno libre (nombre_1...).
         void MoveToDestination()
         {
-            string temp = _item.TempPath;
-            string dest = _item.FilePath;
+            if (PlaceFinished(_item, _cfg, FreePath)) { Action<DownloadItem> h = PathChanged; if (h != null) h(_item); }
+        }
+
+        // El paso final, también para una descarga retenida en la temporal al confirmarla: la mueve a su FilePath (con
+        // "Sobrescribir", sustituyendo al que hubiera). true = acabó con otro nombre porque ya había un archivo con ese.
+        internal static bool PlaceFinished(DownloadItem it, AppConfig cfg, Func<string, string> reserver)
+        {
+            string temp = it.TempPath, tempDir = Path.GetDirectoryName(temp);
+            string dest = it.FilePath;
             Directory.CreateDirectory(Path.GetDirectoryName(dest));
-            // "Redescargar": la versión nueva sustituye a la anterior (como IDM).
-            if (_item.Overwrite && File.Exists(dest)) { try { File.Delete(dest); } catch { } }
-            for (int attempt = 0; attempt < 5; attempt++)
+            // "Redescargar" o "Sí, reemplazar": la versión nueva sustituye a la anterior (como IDM). La anterior se aparta y
+            // solo se borra cuando la nueva ya está en su sitio: si no se puede mover (disco lleno...), vuelve a su nombre.
+            string old = null;
+            if (it.Overwrite && File.Exists(dest))
             {
-                if (File.Exists(dest)) dest = PathReserver != null ? PathReserver(dest) : Util.UniquePath(dest);
-                try { MoveFile(temp, dest); break; }
-                catch (IOException) { if (!File.Exists(temp)) throw; if (attempt == 4) throw; }
+                old = dest + ".idmclone-viejo";
+                try { if (File.Exists(old)) File.Delete(old); File.Move(dest, old); }
+                catch (Exception) { old = null; try { File.Delete(dest); } catch { } } // no se deja apartar (ruta muy larga...)
             }
-            bool renamed = !string.Equals(dest, _item.FilePath, StringComparison.OrdinalIgnoreCase);
-            _item.FilePath = dest;
-            _item.TempPath = null;
-            _item.Overwrite = false;
-            try { string d = Path.GetDirectoryName(temp); if (Directory.GetFileSystemEntries(d).Length == 0) Directory.Delete(d); } catch { }
-            if (renamed) { Action<DownloadItem> h = PathChanged; if (h != null) h(_item); }
+            try
+            {
+                for (int attempt = 0; attempt < 5; attempt++)
+                {
+                    if (File.Exists(dest)) dest = reserver != null ? reserver(dest) : Util.UniquePath(dest);
+                    try { MoveFile(temp, dest); break; }
+                    catch (IOException) { if (!File.Exists(temp)) throw; if (attempt == 4) throw; }
+                    Thread.Sleep(200); // p. ej. el antivirus lo tiene abierto un momento
+                }
+            }
+            catch
+            {
+                if (old != null && !File.Exists(it.FilePath)) { try { File.Move(old, it.FilePath); } catch { } }
+                throw;
+            }
+            if (old != null) { try { File.Delete(old); } catch { } }
+            bool renamed = !string.Equals(dest, it.FilePath, StringComparison.OrdinalIgnoreCase);
+            it.FilePath = dest;
+            it.TempPath = null;
+            it.Overwrite = false;
+            it.HeldInTemp = false;
+            try { if (Directory.GetFileSystemEntries(tempDir).Length == 0) Directory.Delete(tempDir); } catch { }
+            return renamed;
         }
 
         // En la misma unidad es un simple renombrado. Entre unidades se copia primero a un nombre provisional
@@ -407,17 +454,20 @@ namespace IDMClone
             return utc >= MinServerDate && utc <= DateTime.UtcNow.AddDays(1);
         }
 
-        void ApplyServerDate(string path, string lastModified)
+        void ApplyServerDate(string path, string lastModified) { Trace(SetServerDate(path, lastModified)); }
+
+        // Devuelve qué pasó (para el registro).
+        internal static string SetServerDate(string path, string lastModified)
         {
             try
             {
                 DateTime utc;
-                if (!ServerDateUsable(lastModified, out utc)) { Trace("fecha del servidor no válida o ausente: " + lastModified); return; }
+                if (!ServerDateUsable(lastModified, out utc)) return "fecha del servidor no válida o ausente: " + lastModified;
                 File.SetCreationTimeUtc(path, utc);
                 File.SetLastWriteTimeUtc(path, utc);
-                Trace("fecha del archivo = la del servidor: " + utc.ToString("u"));
+                return "fecha del archivo = la del servidor: " + utc.ToString("u");
             }
-            catch (Exception ex) { Trace("no se pudo poner la fecha del servidor: " + ex.Message); }
+            catch (Exception ex) { return "no se pudo poner la fecha del servidor: " + ex.Message; }
         }
 
         // FTP: reparto inicial en N trozos (su tamaño se sabe por SIZE). HTTP: un solo trozo con la

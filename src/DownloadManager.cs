@@ -191,6 +191,13 @@ namespace IDMClone
             lock (_sync) return ReservePathLocked(wanted, owner);
         }
 
+        // Una ruta libre en el disco y en la lista, sin apartarla con un archivo vacío: para mover ahí enseguida un
+        // archivo ya terminado (el vacío lo impediría).
+        public string FreePath(string wanted, DownloadItem owner)
+        {
+            lock (_sync) return Util.UniquePath(wanted, delegate(string p) { return IsPathTakenLocked(p, owner); });
+        }
+
         // --- Iniciar / detener ---
 
         // El usuario inicia la descarga a mano.
@@ -221,6 +228,7 @@ namespace IDMClone
                 it.SpeedBps = 0;
                 eng = new DownloadEngine(it, Config);
                 eng.PathReserver = delegate(string wanted) { return ReservePath(wanted, it); };
+                eng.FreePath = delegate(string wanted) { return FreePath(wanted, it); };
                 eng.Finished += OnEngineFinished;
                 eng.PathChanged += delegate(DownloadItem x) { SaveList(); RaiseChanged(); };
                 it.Engine = eng;
@@ -302,7 +310,9 @@ namespace IDMClone
             catch { }
             // El archivo de destino no es de esta descarga si es el que iba a sustituir y se cancela en
             // "Información del archivo", o si otra descarga de la lista usa la misma ruta (el duplicado).
-            bool notOurs = it.Overwrite && it.Pending;
+            // Si terminó retenida en la temporal (HeldInTemp), lo que haya en el destino tampoco es suyo: su archivo es el temporal.
+            // Igual con una pendiente que baja a la temporal: en el destino aún no ha puesto nada.
+            bool notOurs = (it.Overwrite && it.Pending) || it.HeldInTemp || (it.Pending && !string.IsNullOrEmpty(it.TempPath));
             lock (_sync) notOurs |= IsPathTakenLocked(it.FilePath, it);
             if (!notOurs && (deleteFile || unfinishedEmpty))
                 try { if (File.Exists(it.FilePath)) File.Delete(it.FilePath); } catch { }
@@ -352,12 +362,33 @@ namespace IDMClone
         // --- Diálogo "Información del archivo a descargar" ---
         // La descarga se crea fuera de la lista (Pending) y puede ir bajando mientras se muestra el diálogo.
         // "Iniciar descarga" o "Descargar más tarde" la confirman; "Cancelar" la descarta sin dejar rastro.
+        // Si terminó con el diálogo abierto, el archivo sigue en la carpeta temporal (HeldInTemp) y pasa ahora a la ruta
+        // que eligió el usuario, como IDM. Si no se puede mover (disco lleno, archivo bloqueado...), lanza la excepción y
+        // la descarga sigue pendiente: el diálogo lo dice y el usuario puede elegir otra ruta o cancelar.
         public void Confirm(DownloadItem it)
         {
-            if (!it.Pending) return;
-            it.Pending = false;
+            bool held;
+            // Bajo el cerrojo de la descarga, con el motor (HoldIfPending): si aún no está retenida, deja de estar
+            // pendiente y el motor la colocará él al terminar; si ya lo está, el motor ya acabó y la coloca esto.
+            lock (it.Sync)
+            {
+                if (!it.Pending) return;
+                held = it.HeldInTemp;
+                // Su estado se guarda bajo el cerrojo: si no, el motor podría terminar y borrarlo antes de guardarlo.
+                if (!held) { it.Pending = false; it.SaveState(); }
+            }
+            if (held)
+            {
+                // Si otro archivo ocupó el nombre entretanto, usa uno libre (queda en it.FilePath).
+                Func<string, string> free = delegate(string p) { return FreePath(p, it); };
+                DownloadEngine.PlaceFinished(it, Config, free);
+                DownloadEngine.PlaceSeparateAudio(it, Config, free);
+                if (Config.SetFileDateFromServer) DownloadEngine.SetServerDate(it.FilePath, it.LastModified);
+                if (it.IsMedia && it.SeparateAudio == null) DownloadEngine.DeleteMediaWork(it, Config); // (si el audio no se pudo mover, sigue ahí)
+                it.DeleteState();
+                it.Pending = false;
+            }
             SaveList();
-            it.SaveState();
             if (IsQueueRunning(it.Queue)) PumpQueue();
             RaiseChanged();
         }

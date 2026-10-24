@@ -105,7 +105,6 @@ namespace IDMClone
         readonly Dictionary<string, ProgressForm> _progress = new Dictionary<string, ProgressForm>();
         readonly HashSet<string> _silent = new HashSet<string>(); // descargas de /n: sin ventanas
         readonly HashSet<string> _finishedWhilePending = new HashSet<string>(); // terminaron con "Información del archivo" abierto
-        readonly HashSet<string> _balloonOnly = new HashSet<string>();          // "Descargar más tarde" de una ya terminada
         List<KeyValuePair<ColumnDef, int>> _layout;
         ColumnDef[] _colByIndex = new ColumnDef[0];
         bool _allowShow = true;
@@ -1657,28 +1656,21 @@ namespace IDMClone
             f.Decided += delegate(FileInfoForm x)
             {
                 DownloadItem d = x.Item;
+                if (_reallyExit || IsDisposed) return; // saliendo de IDMClone: sin avisos nuevos
                 // Terminó mientras se mostraba el diálogo y OnItemFinished calló porque estaba pendiente: el aviso toca
-                // ahora ("Descarga completada", o el globo con "Descargar más tarde"). Si OnItemFinished aún no ha llegado,
-                // avisará él (así no sale dos veces).
+                // ahora ("Descarga completada", también con "Descargar más tarde", como IDM), con el archivo ya en la ruta
+                // elegida. Si OnItemFinished aún no ha llegado, avisará él (así no sale dos veces).
                 bool finished = _finishedWhilePending.Remove(d.Id);
-                if (x.Choice == "start")
+                if ((x.Choice == "start" || x.Choice == "later") && d.Status == DownloadStatus.Complete)
                 {
-                    if (d.Status == DownloadStatus.Complete)
+                    if (finished)
                     {
-                        if (finished)
-                        {
-                            if (d.ShowCompleteDialog ?? _cfg.ShowCompleteDialog) ShowComplete(d);
-                            else if (_tray != null) Balloon(4000, "Descarga completada", d.FileName, ToolTipIcon.Info);
-                        }
+                        CheckForViruses(d); // al terminar aún estaba en la carpeta temporal: se analiza ya en su sitio
+                        if (d.ShowCompleteDialog ?? _cfg.ShowCompleteDialog) ShowComplete(d);
+                        else if (_tray != null) Balloon(4000, "Descarga completada", d.FileName, ToolTipIcon.Info);
                     }
-                    else ShowProgressFor(d);
                 }
-                else if (x.Choice == "later" && d.Status == DownloadStatus.Complete)
-                {
-                    // "Más tarde": solo el globo. Si OnItemFinished aún no ha llegado, que tampoco abra el diálogo.
-                    if (!finished) _balloonOnly.Add(d.Id);
-                    else if (_tray != null) Balloon(4000, "Descarga completada", d.FileName, ToolTipIcon.Info);
-                }
+                else if (x.Choice == "start") ShowProgressFor(d);
                 RefreshList();
             };
             f.Show();
@@ -2415,12 +2407,11 @@ namespace IDMClone
                 if (it.Status == DownloadStatus.Complete)
                 {
                     PlaySound(SoundSetting.Complete);
-                    CheckForViruses(it);
+                    if (!it.Pending) CheckForViruses(it); // pendiente: cuando se confirme y esté en su sitio (ShowFileInfo)
                     // Como IDM: al terminar se cierra la ventana de progreso y aparece "Descarga completada".
                     if (_progress.TryGetValue(it.Id, out pf)) pf.Close();
                     // Si aún está abierto "Información del archivo", el aviso espera a que el usuario decida.
                     bool show = (it.ShowCompleteDialog ?? _cfg.ShowCompleteDialog) && !it.LastRunByQueue && !_silent.Contains(it.Id) && !it.Pending;
-                    if (_balloonOnly.Remove(it.Id)) show = false;
                     if (show) ShowComplete(it);
                     else if (it.Pending) { if (!it.Removed) _finishedWhilePending.Add(it.Id); } // lo dice ShowFileInfo al decidir
                     else if (_tray != null) Balloon(4000, "Descarga completada", it.FileName, ToolTipIcon.Info);
@@ -2533,6 +2524,13 @@ namespace IDMClone
 
         void ExitApp() { _reallyExit = true; Close(); }
 
+        static void CloseFileInfoDialogs()
+        {
+            List<Form> open = new List<Form>();
+            foreach (Form f in Application.OpenForms) if (f is FileInfoForm) open.Add(f);
+            foreach (Form f in open) { try { f.Close(); } catch { } }
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             if (!_reallyExit && e.CloseReason == CloseReason.UserClosing)
@@ -2543,6 +2541,9 @@ namespace IDMClone
                 return;
             }
             SaveLayout();
+            // "Información del archivo" abierto al salir: como cerrarlo con la X (Cancelar), así no queda nada a medias en
+            // la carpeta temporal.
+            CloseFileInfoDialogs();
             _mgr.StopAllAndWait(3000);
             _mgr.SaveList();
             if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
