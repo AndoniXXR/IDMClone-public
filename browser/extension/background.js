@@ -322,6 +322,9 @@ if (B.webRequest && B.webRequest.onBeforeRequest) {
 const tabMedia = new Map(); // tabId -> { items: Map(url -> entrada), children: Set(listas de cada calidad), streaming }
 const tabPage = new Map();  // tabId -> dirección de la página (sin "#..."), para notar los cambios sin recarga
 const PROBE_REPLY_MS = 20000;
+// audioWait: un audio pedido a trozos sin vídeo aún espera (oculto) a su vídeo antes de ofrecerse solo: el
+// reproductor (Facebook, Instagram...) suele pedir el audio un poco antes que el vídeo, y no es música.
+const MEDIA_TIMING = { audioWait: 2500 };
 let mediaSeq = 1;
 
 function mediaState(tabId) {
@@ -382,6 +385,13 @@ async function detectMedia(details) {
     // Vídeo y audio en archivos aparte (el reproductor pide los dos a trozos): se ofrecen juntos, y
     // IDMClone los mezcla en un archivo (como IDM con Facebook o Instagram).
     if (m.ranged) {
+      if (m.media === "video" && small) {
+        // Vídeo demasiado pequeño (anuncio, clip corto...): ni solo ni con audio. El audio que ya se ofrecía solo
+        // era suyo (no música): se quita del panel; el que espera a su vídeo ya no sale (ver showLoneAudio).
+        st.items.set(key, entry);
+        for (const e of [...st.items.values()]) if (e && e.alone) { e.alone = false; e.hidden = true; await removeEntry(details, e); }
+        return;
+      }
       const other = [...st.items.values()].filter((e) => e && e.kind === "file" && e.ranged && e.media !== m.media && Date.now() - e.t < 120000).pop();
       if (other) {
         st.items.set(key, entry);
@@ -390,17 +400,34 @@ async function detectMedia(details) {
           for (const e of [...st.items.values()]) if (e && e.kind === "file" && e.ranged && e.media === "video" && !e.hidden) await sendPair(details, st, e, entry);
           return;
         }
-        if (m.media === "video" && small) return; // vídeo demasiado pequeño (anuncio...): ni solo ni con audio
         await sendPair(details, st, entry, other);
         return;
       }
       if (small) { st.items.set(key, entry); return; }
+      if (m.media === "audio") {
+        // Audio sin vídeo aún: no se enseña ya (saldría como música y luego cambiaría a vídeo); espera oculto a su vídeo.
+        entry.hidden = true;
+        st.items.set(key, entry);
+        setTimeout(() => { showLoneAudio(details, st, key, entry).catch(() => {}); }, MEDIA_TIMING.audioWait);
+        return;
+      }
     }
   } else {
     let cookies = "";
     try { cookies = await gatherCookies(details.url, tab && tab.incognito); } catch (e) { }
-    const r = await hostRequest({ type: "probe", url: details.url, cookies, referrer: page, userAgent: navigator.userAgent }, PROBE_REPLY_MS);
+    const probing = hostRequest({ type: "probe", url: details.url, cookies, referrer: page, userAgent: navigator.userAgent }, PROBE_REPLY_MS);
+    if (!st.probes) st.probes = new Set();
+    st.probes.add(probing);
+    let r;
+    try { r = await probing; } finally { st.probes.delete(probing); }
     if (!r || !r.ok) { st.items.delete(key); return; }
+    // Lista de una sola calidad (sin hijas) mientras IDMClone aún lee otra lista de la pestaña: suele ser una calidad
+    // o el audio de esa maestra (X pide la maestra y enseguida sus hijas). Se espera a la maestra antes de enseñarla,
+    // para que no aparezca un momento en el panel y desaparezca.
+    if (!(r.children && r.children.length) && st.probes.size) {
+      try { await Promise.all([...st.probes]); } catch (e) { }
+      if (tabMedia.get(details.tabId) !== st) return; // página nueva
+    }
     // Las listas de cada calidad no son vídeos aparte. El reproductor pudo pedir alguna mientras
     // IDMClone leía la maestra: se quitan del panel.
     for (const c of r.children || []) {
@@ -419,9 +446,16 @@ async function detectMedia(details) {
     const subItems = r.items.filter((i) => i.kind === "subtitle");
     const avItems = r.items.filter((i) => i.kind !== "subtitle");
     // #8: solo las calidades de un tipo marcado (por la extensión del archivo que sale: .mp4, .m4a, .webm...).
-    const items = Array.isArray(cfg.mediaTypes)
-      ? avItems.filter((i) => L.mediaTypeAllowed(String(i.ext || "").replace(/^\./, ""), i.size, i.kind === "audio" ? "audio" : "video", cfg).show)
-      : avItems;
+    let items = avItems;
+    if (Array.isArray(cfg.mediaTypes)) {
+      const checked = avItems.map((i) => ({ i, a: L.mediaTypeAllowed(String(i.ext || "").replace(/^\./, ""), i.size, i.kind === "audio" ? "audio" : "video", cfg) }));
+      items = checked.filter((x) => x.a.show).map((x) => x.i);
+      // Si ninguna calidad de vídeo llega al mínimo (clip corto a baja resolución, como los de X), la lista es el vídeo
+      // de la página, no un anuncio: se ofrecen igual sus calidades (las de tipos marcados) con su audio, en vez de
+      // dejar solo el audio como si fuera música. El tamaño de una lista es una estimación (bitrate x duración).
+      const videos = checked.filter((x) => x.i.kind !== "audio");
+      if (videos.length && !videos.some((x) => x.a.show) && videos.some((x) => x.a.small)) items = checked.filter((x) => !x.a.off).map((x) => x.i);
+    }
     if (!items.length) { hiddenList(); return; }
     // En directo también (se graba, como IDM).
     entry = { id: mediaSeq++, kind: r.kind, url: details.url, duration: r.duration, protected: !!r.protected, live: !!r.live,
@@ -430,10 +464,25 @@ async function detectMedia(details) {
     for (const [k, e] of [...st.items.entries()]) if (e && e.ranged) { st.items.delete(k); await removeEntry(details, e); }
   }
   st.items.set(key, entry);
-  // Al marco que lo pidió (el del reproductor); si no tiene content.js (about:blank...), a la página.
+  await sendEntry(details, entry);
+  await flushSubtitles(details, st);
+}
+
+// Al marco que lo pidió (el del reproductor); si no tiene content.js (about:blank...), a la página.
+async function sendEntry(details, entry) {
   const send = (frameId) => B.tabs.sendMessage(details.tabId, { type: "idm-media", entry }, { frameId });
   try { await send(details.frameId > 0 ? details.frameId : 0); }
   catch (e) { if (details.frameId > 0) { try { await send(0); } catch (e2) { } } }
+}
+
+// Pasado MEDIA_TIMING.audioWait sin ningún vídeo a trozos en la pestaña, el audio sí se ofrece solo (puede ser solo
+// audio). Nada si la página cambió (tabMedia nuevo), si resultó ser de una lista HLS/DASH o si llegó un vídeo
+// (con él ya hay par, o era pequeño y el audio era suyo).
+async function showLoneAudio(details, st, key, entry) {
+  if (tabMedia.get(details.tabId) !== st || st.items.get(key) !== entry || !entry.hidden) return;
+  if ([...st.items.values()].some((e) => e && e.kind === "file" && e.ranged && e.media === "video" && e.t >= entry.t)) return;
+  entry.hidden = false; entry.alone = true;
+  await sendEntry(details, entry);
   await flushSubtitles(details, st);
 }
 
@@ -522,6 +571,7 @@ async function sendPair(details, st, v, a) {
   const old = st.items.get(pairKey);
   if (old) await removeEntry(details, old);
   for (const e of [v, a]) await removeEntry(details, e);
+  a.alone = false;
   const entry = { id: mediaSeq++, kind: "pair", url: v.url, media: "video",
                   items: [{ kind: "video", video: v.url, audio: a.url, ext: vext, size }] };
   st.items.set(pairKey, entry);
@@ -1233,7 +1283,7 @@ B.runtime.onMessage.addListener((req, sender, sendResponse) => {
 });
 
 // Para las pruebas con Node (no hace nada en el navegador).
-if (typeof module !== "undefined" && module.exports) module.exports = { consider, considerInline, leaveInline, hostRequest, getSettings, getAppConfig, fetchAppConfig, checkExtUpdate, rememberHeaders, rememberPost, collectLinks, mergeFrameLinks, sendLinks, sendLinkList, keyState, KEY_TIMING, headerCache, detectMedia, detectSubtitle, downloadMedia, tabMedia, createMenus, applyMenuFlags, initMenus, menuDone: () => menuChain, proxyFor, cookiesForUrl, answerCookies, cookieHostAllowed, noteRecentHost, recentHosts, IS_FIREFOX, _reset: () => { decided.clear(); waitingName.clear(); appCfg = null; appCfgAt = 0; prevented.clear(); forcedLinks.clear(); for (const k of Object.keys(keyState)) delete keyState[k]; postBodies.clear(); tabMedia.clear(); proxyByHost.clear(); recentHosts.clear(); recentLoaded = null; } };
+if (typeof module !== "undefined" && module.exports) module.exports = { consider, considerInline, leaveInline, hostRequest, getSettings, getAppConfig, fetchAppConfig, checkExtUpdate, rememberHeaders, rememberPost, collectLinks, mergeFrameLinks, sendLinks, sendLinkList, keyState, KEY_TIMING, MEDIA_TIMING, headerCache, detectMedia, detectSubtitle, downloadMedia, tabMedia, createMenus, applyMenuFlags, initMenus, menuDone: () => menuChain, proxyFor, cookiesForUrl, answerCookies, cookieHostAllowed, noteRecentHost, recentHosts, IS_FIREFOX, _reset: () => { decided.clear(); waitingName.clear(); appCfg = null; appCfgAt = 0; prevented.clear(); forcedLinks.clear(); for (const k of Object.keys(keyState)) delete keyState[k]; postBodies.clear(); tabMedia.clear(); proxyByHost.clear(); recentHosts.clear(); recentLoaded = null; } };
 else {
   // Al arrancar el navegador: leer ya las teclas especiales de IDMClone para las páginas (content.js).
   setTimeout(() => { getAppConfig().catch(() => {}); }, 3000);

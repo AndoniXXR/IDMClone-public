@@ -16,6 +16,59 @@ namespace IDMClone
             return name.Trim();
         }
 
+        // Límites de IDM 6.43 (medidos en un Sandbox con nombres de 206, 244 y 304 caracteres): el nombre se acorta, sin tocar
+        // la extensión, a 211 caracteres como mucho y a lo justo para que la ruta completa no pase de 254.
+        public const int MaxFileNameLength = 211, MaxPathLength = 254;
+
+        // El nombre que cabe en esa carpeta. Si ni acortándolo cabe (carpeta larguísima), se deja como está.
+        public static string FitFileName(string dir, string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            int dirLen = string.IsNullOrEmpty(dir) ? 0 : dir.TrimEnd('\\', '/').Length + 1;
+            int limit = Math.Min(MaxFileNameLength, MaxPathLength - dirLen);
+            if (name.Length <= limit) return name;
+            string ext = "";
+            int dot = name.LastIndexOf('.');
+            if (dot > 0 && name.Length - dot <= 16) ext = name.Substring(dot); // ".zip", ".tar.gz" -> ".gz"
+            string stem = Shorten(name.Substring(0, name.Length - ext.Length), limit - ext.Length);
+            return stem.Length == 0 ? name : stem + ext;
+        }
+
+        // La ruta con el nombre acortado como IDM (ver FitFileName).
+        public static string FitPath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return path;
+            try
+            {
+                string dir = Path.GetDirectoryName(path), name = Path.GetFileName(path);
+                string fit = FitFileName(dir, name);
+                return fit == name ? path : Path.Combine(dir, fit);
+            }
+            catch (Exception) { return path; }
+        }
+
+        // Los primeros 'max' caracteres, sin partir un carácter doble (emoji...) ni acabar en punto o espacio (Windows los quita).
+        public static string Shorten(string s, int max)
+        {
+            if (string.IsNullOrEmpty(s) || s.Length <= max) return s ?? "";
+            if (max <= 0) return "";
+            int n = max;
+            if (char.IsHighSurrogate(s[n - 1])) n--;
+            return s.Substring(0, n).TrimEnd(' ', '.');
+        }
+
+        // Nombre corto para el archivo de trabajo en la carpeta temporal (IDM tampoco usa ahí el nombre entero): así una
+        // descarga con un nombre muy largo no se pasa del límite de ruta de Windows antes de llegar a su destino.
+        public static string WorkFileName(string name)
+        {
+            name = SanitizeFileName(name);
+            if (string.IsNullOrEmpty(name)) return "descarga";
+            string ext = Path.GetExtension(name);
+            if (ext.Length > 16) ext = "";
+            string stem = Shorten(name.Substring(0, name.Length - ext.Length), 40);
+            return (stem.Length == 0 ? "descarga" : stem) + ext;
+        }
+
         // Deduce un nombre de archivo a partir de la URL.
         public static string FileNameFromUrl(string url)
         {

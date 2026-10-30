@@ -712,7 +712,7 @@ namespace IDMClone
             try
             {
                 if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                Process.Start("explorer.exe", "\"" + dir + "\"");
+                Shell.OpenFolderWindow(dir);
             }
             catch (Exception ex) { Msg.Show(this, ex.Message, "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
@@ -852,6 +852,9 @@ namespace IDMClone
         {
             if (!Lang.Load(name)) { Msg.Show(this, "No se encuentra el archivo del idioma \"" + name + "\".", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             _cfg.Language = name == Lang.BuiltIn ? null : name;
+            // Las carpetas de las categorías de siempre pasan al idioma nuevo (Comprimidos <-> Compressed...), con sus archivos.
+            bool foldersChanged;
+            List<string> notRenamed = CategoryFolders.Sync(_cfg, _mgr, _grabber != null && !_grabber.IsDisposed ? _grabber.Project : null, out foldersChanged);
             _cfg.Save();
             // La letra de la interfaz depende del idioma (chino: Microsoft YaHei UI; ver Theme.UiFont).
             if (Font.Name != Theme.UiFamily)
@@ -868,6 +871,14 @@ namespace IDMClone
             RefreshList();
             UpdateStatus();
             ShellMenu.Relabel(Application.ExecutablePath); // "Descargar con IDMClone" del Explorador, en el idioma nuevo
+            if (notRenamed.Count > 0)
+            {
+                List<string> lines = new List<string>();
+                foreach (string p in notRenamed) lines.Add(Lang.T(p));
+                string text = Lang.T("Estas carpetas de categorías no se pudieron pasar al idioma nuevo y se quedan como estaban:") + "\n\n" + string.Join("\n", lines.ToArray());
+                if (FolderNoticeHook != null) FolderNoticeHook(text);
+                else Msg.Show(this, text, "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         // Filas del árbol de ~17 px a 100 % (IDM), más si la letra es mayor.
@@ -1032,7 +1043,7 @@ namespace IDMClone
             _listMenu.Renderer = IdmMenuRenderer.Instance;
             ToolStripItem open = _listMenu.Items.Add("Abrir", null, delegate { DownloadItem it = One(); if (it != null) Shell.Open(this, it.FilePath); });
             ToolStripItem openWith = _listMenu.Items.Add("Abrir con...", null, delegate { DownloadItem it = One(); if (it != null) Shell.OpenWith(this, it.FilePath); });
-            ToolStripItem folder = _listMenu.Items.Add("Abrir carpeta", null, delegate { DownloadItem it = One(); if (it != null) Shell.OpenFolder(File.Exists(it.FilePath) ? it.FilePath : Path.Combine(Path.GetDirectoryName(it.FilePath), "")); });
+            ToolStripItem folder = _listMenu.Items.Add("Abrir carpeta", null, delegate { DownloadItem it = One(); if (it != null) Shell.OpenFolder(it.FilePath); });
             _listMenu.Items.Add(new ToolStripSeparator());
             ToolStripItem move = _listMenu.Items.Add("Mover/Renombrar (Ctrl-M)", null, delegate { MoveRenameSelected(); });
             _listMenu.Items.Add(new ToolStripSeparator());
@@ -2478,6 +2489,8 @@ namespace IDMClone
 
         // Para los tests: qué se abriría al terminar una cola ("Abrir el siguiente archivo").
         public static Action<string> RunFileHook;
+        // Para los tests: el aviso de carpetas de categorías que no se pudieron pasar al idioma nuevo.
+        public static Action<string> FolderNoticeHook;
 
         void OnQueueFinished(QueueDef q)
         {

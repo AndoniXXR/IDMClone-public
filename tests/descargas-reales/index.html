@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Descargas reales</title>
+<style>
+  :root { --bg:#f6f7f9; --fg:#1c1f24; --mut:#5d6672; --card:#fff; --line:#dde1e7; --acc:#2456b3; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --fg:#e7e9ee; --mut:#9aa3b2; --card:#1a1d23; --line:#2a2f38; --acc:#7aa7ff; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  main { max-width:980px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 6px; } h2 { font-size:15px; margin:26px 0 8px; color:var(--mut); text-transform:uppercase; letter-spacing:.04em; }
+  p, li { margin:5px 0; } a { color:var(--acc); word-break:break-all; }
+  .nota { color:var(--mut); font-size:14px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:14px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; }
+  code { font:12px Consolas, monospace; }
+</style>
+</head>
+<body>
+<main>
+<h1>Descargas reales para probar IDMClone</h1>
+<p class="nota">Son descargas HTTP de verdad: las sirve el servidor de pruebas de IDMClone (<code>IDMCloneTests.exe --serve 18800</code>,
+con su tamaño, <code>Range</code> y varias conexiones). <code>iniciar.cmd</code> arranca el servidor y abre todos estos enlaces en la lista de enlaces de IDMClone.
+Cada archivo va a la carpeta de su categoría, para tener varias carpetas.</p>
+
+<h2>Archivos</h2>
+<table>
+<tr><th>Enlace</th><th>Qué prueba</th></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range/documento.pdf?size=3145728&id=d1">documento.pdf</a> (3 MB)</td><td>Documentos</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range/fotos%20vacaciones.zip?size=8388608&id=d2">fotos vacaciones.zip</a> (8 MB)</td><td>Comprimidos, nombre con espacio</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range/canci%C3%B3n%20%C3%B1and%C3%BA.mp3?size=5242880&id=d3">canción ñandú.mp3</a> (5 MB)</td><td>Música, acentos y ñ</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range/v%C3%ADdeo%20%231%2C%20final.mp4?size=20971520&id=d4">vídeo #1, final.mp4</a> (20 MB)</td><td>Vídeo, nombre con <code>#</code> y <code>,</code></td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range/instalador.exe?size=6291456&id=d5">instalador.exe</a> (6 MB)</td><td>Programas</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range/datos.dat?size=2097152&id=d6">datos.dat</a> (2 MB)</td><td>General</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range,cd/descargar.php?size=1048576&id=d7">descargar.php</a> (1 MB)</td><td>Nombre por Content-Disposition: sale «informe final €.pdf»</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range/un%20nombre%20de%20archivo%20muy%20largo%20para%20comprobar%20que%20Abrir%20carpeta%20tambien%20funciona%20con%20rutas%20largas%20en%20el%20Explorador%20de%20Windows%20y%20que%20selecciona%20el%20archivo%20correcto%20aunque%20ocupe%20casi%20doscientos%20caracteres.zip?size=1048576&id=d8">nombre de unos 200 caracteres.zip</a> (1 MB)</td><td>Ruta larga</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/range,veryslow/grande%20lento.zip?size=62914560&id=d9">grande lento.zip</a> (60 MB, lento)</td><td>«Abrir carpeta» <b>mientras descarga</b> (aún está en la carpeta temporal)</td></tr>
+<tr><td><a href="http://127.0.0.1:18800/f/norange/sin%20rangos.zip?size=4194304&id=d10">sin rangos.zip</a> (4 MB)</td><td>Servidor sin <code>Range</code>: una sola conexión</td></tr>
+<tr><td><a href="https://proof.ovh.net/files/1Mb.dat">proof.ovh.net/files/1Mb.dat</a> (1 MB)</td><td>Servidor real de internet</td></tr>
+<tr><td><a href="https://proof.ovh.net/files/10Mb.dat">proof.ovh.net/files/10Mb.dat</a> (10 MB)</td><td>Servidor real de internet</td></tr>
+</table>
+
+<h2>«Abrir carpeta»: qué debe pasar (como el IDM original 6.43)</h2>
+<ol>
+  <li><b>A.</b> Sin ningún Explorador abierto → se abre <b>una</b> ventana en la carpeta con el archivo seleccionado.</li>
+  <li><b>B.</b> Con un Explorador ya abierto <b>en esa carpeta</b> → se reutiliza esa ventana y se pone delante; <b>no</b> aparece una segunda.</li>
+  <li><b>C.</b> Con un Explorador abierto en <b>otra</b> carpeta → ventana nueva (la otra no se toca).</li>
+  <li><b>D.</b> En la ventana de la carpeta, selecciona otro archivo y repite → se reutiliza y <b>vuelve a seleccionarse</b> el descargado.</li>
+  <li><b>E.</b> Con el archivo borrado, o con «grande lento.zip» aún descargando → se abre <b>su</b> carpeta de destino (nunca la de arriba), en una ventana nueva.</li>
+  <li>Repite B y D con «vídeo #1, final.mp4», «canción ñandú.mp3» y el nombre largo.</li>
+  <li>Lo mismo desde la ventana «Descarga completada» (botón «Abrir carpeta») y desde el menú de clic derecho de la lista.</li>
+</ol>
+<p class="nota">En el Sandbox, <code>C:\compartido\ventanas.ps1</code> deja en <code>C:\compartido\ventanas.txt</code> las ventanas del Explorador abiertas
+en cada momento, para comprobarlo sin depender de capturas.</p>
+</main>
+</body>
+</html>

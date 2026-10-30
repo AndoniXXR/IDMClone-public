@@ -331,7 +331,7 @@ namespace IDMClone
             catch { return false; }
         }
 
-        // Elige el archivo de trabajo. Con carpeta temporal: <temporal>\<id>\<nombre> (IDM: DwnlData).
+        // Elige el archivo de trabajo. Con carpeta temporal: <temporal>\<id>\<nombre corto> (IDM: DwnlData, también con nombres cortos).
         void PrepareWorkFile()
         {
             if (_cfg.UseTempFolder)
@@ -340,7 +340,7 @@ namespace IDMClone
                 {
                     string dir = Path.Combine(_cfg.TempFolderOrDefault, _item.Id);
                     Directory.CreateDirectory(dir);
-                    _item.TempPath = Path.Combine(dir, Util.SanitizeFileName(_item.FileName) ?? "descarga");
+                    _item.TempPath = Path.Combine(dir, Util.WorkFileName(_item.FileName));
                 }
                 // Hueco vacío que pudo quedar con el nombre provisional en el destino.
                 try { if (File.Exists(_item.FilePath) && new FileInfo(_item.FilePath).Length == 0) File.Delete(_item.FilePath); } catch { }
@@ -393,7 +393,7 @@ namespace IDMClone
             string old = null;
             if (it.Overwrite && File.Exists(dest))
             {
-                old = dest + ".idmclone-viejo";
+                old = Path.Combine(Path.GetDirectoryName(dest), "~" + it.Id + ".idmclone-viejo"); // corto: dest + sufijo podía pasarse del límite de ruta
                 try { if (File.Exists(old)) File.Delete(old); File.Move(dest, old); }
                 catch (Exception) { old = null; try { File.Delete(dest); } catch { } } // no se deja apartar (ruta muy larga...)
             }
@@ -429,7 +429,7 @@ namespace IDMClone
         {
             string r1 = Path.GetPathRoot(Path.GetFullPath(temp)), r2 = Path.GetPathRoot(Path.GetFullPath(dest));
             if (string.Equals(r1, r2, StringComparison.OrdinalIgnoreCase)) { File.Move(temp, dest); return; }
-            string part = dest + ".idmclone-mover";
+            string part = Path.Combine(Path.GetDirectoryName(dest), "~" + Guid.NewGuid().ToString("N").Substring(0, 12) + ".idmclone-mover");
             try
             {
                 File.Copy(temp, part, true);
@@ -693,7 +693,7 @@ namespace IDMClone
                     dir = _cfg.FolderFor(name, _item.Url, _item.Referrer);
                     _item.Category = _cfg.CategoryNameFor(name, _item.Url, _item.Referrer);
                 }
-                string wanted = Path.Combine(dir, name);
+                string wanted = Path.Combine(dir, Util.FitFileName(dir, name));
                 if (string.Equals(wanted, oldPath, StringComparison.OrdinalIgnoreCase)) return;
                 string newPath = PathReserver != null ? PathReserver(wanted) : Util.UniquePath(wanted);
                 _item.FilePath = newPath;

@@ -137,7 +137,7 @@ namespace IDMClone
             lock (_sync)
             {
                 if (!string.IsNullOrEmpty(o.OverwritePath)) { it.FilePath = o.OverwritePath; it.Overwrite = true; }
-                else it.FilePath = ReservePathLocked(Path.Combine(folder, fileName), it);
+                else it.FilePath = ReservePathLocked(Path.Combine(folder, Util.FitFileName(folder, fileName)), it);
                 it.QueueOrder = ++_queueOrderSeq;
                 Items.Add(it);
             }
@@ -174,6 +174,8 @@ namespace IDMClone
                     using (new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite)) { }
                     return path;
                 }
+                catch (DirectoryNotFoundException) { break; } // ruta imposible (demasiado larga...): reintentar no sirve
+                catch (PathTooLongException) { break; }
                 catch (IOException) { /* alguien lo creó justo ahora: buscar otra */ }
             }
             return Util.UniquePath(wanted, delegate(string p) { return IsPathTakenLocked(p, owner); });
@@ -455,7 +457,7 @@ namespace IDMClone
         // el archivo aún no está allí) o mueve el parcial. Si estaba descargando, sigue al acabar.
         public void MoveRename(DownloadItem it, string newPath)
         {
-            newPath = Path.GetFullPath(newPath);
+            newPath = Util.FitPath(Path.GetFullPath(newPath));
             if (string.Equals(newPath, it.FilePath, StringComparison.OrdinalIgnoreCase)) return;
             lock (_sync)
                 if (IsPathTakenLocked(newPath, it)) throw new IOException("Otra descarga de la lista ya usa ese nombre.");

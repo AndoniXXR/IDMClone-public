@@ -138,6 +138,21 @@ namespace IDMClone.Setup
 
         // ------------------------------------------------------------------ instalar
 
+        // Primera instalación (aún sin configuración), como el instalador de IDM: IDMClone empezará en el idioma del
+        // instalador (el de Windows) y se crean ya las carpetas de las categorías en Descargas, con los nombres de ese idioma
+        // (IDM las crea siempre en inglés). Con configuración (reinstalar, /update) no se toca nada: el idioma es el que
+        // eligió el usuario y las carpetas las pasa a su idioma el propio IDMClone al arrancar (CategoryFolders.Sync).
+        internal static void FirstConfig()
+        {
+            if (File.Exists(AppConfig.ConfigPath)) return;
+            AppConfig c = AppConfig.CreateDefault(); // nombres de las carpetas en el idioma ya cargado (el del instalador)
+            c.Language = Lang.Current == Lang.BuiltIn ? null : Lang.Current;
+            c.Save();
+            Directory.CreateDirectory(c.DefaultFolder);
+            foreach (Category cat in c.Categories)
+                if (CategoryFolders.NameFor(cat.Name) != null) Directory.CreateDirectory(cat.Folder);
+        }
+
         public static void Install(InstallOptions o, Action<int, string> progress)
         {
             if (progress == null) progress = delegate { };
@@ -204,6 +219,9 @@ namespace IDMClone.Setup
                     if (v != null && v.IndexOf(exe, StringComparison.OrdinalIgnoreCase) >= 0) k.DeleteValue(Startup.ValueName, false);
                 }
             }
+
+            progress(90, "Creando las carpetas de descargas...");
+            try { FirstConfig(); } catch { } // opcional: si falla, IDMClone crea su configuración y las carpetas al usarlas
 
             progress(91, "Añadiendo IDMClone al menú contextual del Explorador...");
             // "Descargar con IDMClone" en los .url y "Descargar los enlaces con IDMClone" en .txt/.htm/.html

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace IDMClone
@@ -31,14 +32,85 @@ namespace IDMClone
             catch (Exception ex) { Msg.Show(owner, ex.Message, "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
 
+        // Para los tests: qué se abriría (ruta, y true si se selecciona un archivo en su carpeta). Con él no se abre nada.
+        public static Action<string, bool> OpenFolderHook;
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)] static extern int SHParseDisplayName(string pszName, IntPtr pbc, out IntPtr ppidl, uint sfgaoIn, out uint psfgaoOut);
+        [DllImport("shell32.dll", ExactSpelling = true)] static extern int SHOpenFolderAndSelectItems(IntPtr pidlFolder, uint cidl, IntPtr[] apidl, uint dwFlags);
+        [DllImport("shell32.dll", ExactSpelling = true)] static extern void ILFree(IntPtr pidl);
+
+        // Qué abre "Abrir carpeta" (como IDM): el archivo seleccionado en su carpeta si existe; si no (aún descargando en
+        // la carpeta temporal, borrado...), su carpeta, nunca la de arriba; una carpeta, ella misma. Sin nada que abrir, null.
+        public static string FolderTarget(string path, out bool select)
+        {
+            select = false;
+            if (string.IsNullOrEmpty(path)) return null;
+            try
+            {
+                if (File.Exists(path)) { select = true; return path; }
+                if (Directory.Exists(path)) return path;
+                string dir = Path.GetDirectoryName(path);
+                return !string.IsNullOrEmpty(dir) && Directory.Exists(dir) ? dir : null;
+            }
+            catch (Exception) { return null; } // caracteres no válidos, ruta demasiado larga para .NET 4...
+        }
+
+        // "Abrir carpeta" de una descarga. Como IDM (SHOpenFolderAndSelectItems): si el Explorador ya muestra esa carpeta,
+        // se reutiliza su ventana y se vuelve a seleccionar el archivo; explorer /select abría siempre otra ventana.
         public static void OpenFolder(string path)
+        {
+            bool select;
+            string target = FolderTarget(path, out select);
+            if (target == null) return;
+            if (OpenFolderHook != null) { OpenFolderHook(target, select); return; }
+            if (select) OnShellThread(delegate { ShowInFolder(target); });
+            else OnShellThread(delegate { ExplorerWindow(target); });
+        }
+
+        // Una carpeta, sin archivo que seleccionar ("Examinar" de una categoría).
+        public static void OpenFolderWindow(string dir)
+        {
+            if (string.IsNullOrEmpty(dir)) return;
+            if (OpenFolderHook != null) { OpenFolderHook(dir, false); return; }
+            OnShellThread(delegate { ExplorerWindow(dir); });
+        }
+
+        static void ShowInFolder(string file)
+        {
+            IntPtr pidl = IntPtr.Zero;
+            int hr;
+            try
+            {
+                uint attrs;
+                hr = SHParseDisplayName(file, IntPtr.Zero, out pidl, 0, out attrs);
+                if (hr == 0 && pidl != IntPtr.Zero) hr = SHOpenFolderAndSelectItems(pidl, 0, null, 0); // 0 elementos: abre su carpeta y lo selecciona
+                else if (hr == 0) hr = -1;
+            }
+            catch (Exception) { hr = -1; }
+            finally { if (pidl != IntPtr.Zero) ILFree(pidl); }
+            if (hr != 0) { try { Process.Start("explorer.exe", "/select,\"" + file + "\""); } catch (Exception) { } }
+        }
+
+        // Abierta por el shell, como IDM: la carpeta queda con la misma identidad que la que abre SHOpenFolderAndSelectItems
+        // ("Este equipo > Descargas"), así luego se reutiliza esa ventana. Con explorer.exe "ruta" quedaba como
+        // "Disco local > Usuarios > ... > Descargas" y Windows la tomaba por otra carpeta (otra ventana más).
+        static void ExplorerWindow(string dir)
         {
             try
             {
-                if (File.Exists(path)) Process.Start("explorer.exe", "/select,\"" + path + "\"");
-                else if (Directory.Exists(Path.GetDirectoryName(path))) Process.Start(Path.GetDirectoryName(path));
+                ProcessStartInfo psi = new ProcessStartInfo(dir); psi.UseShellExecute = true; psi.Verb = "open";
+                Process.Start(psi);
             }
-            catch { }
+            catch (Exception) { try { Process.Start("explorer.exe", "\"" + dir + "\""); } catch (Exception) { } }
+        }
+
+        // En un hilo STA aparte: el Explorador puede tardar segundos en arrancar y la ventana de IDMClone no se congela.
+        static void OnShellThread(System.Threading.ThreadStart work)
+        {
+            System.Threading.Thread t = new System.Threading.Thread(delegate() { try { work(); } catch (Exception) { } });
+            t.SetApartmentState(System.Threading.ApartmentState.STA);
+            t.IsBackground = true;
+            t.Start();
         }
     }
 
@@ -422,7 +494,7 @@ namespace IDMClone
         bool Apply()
         {
             string wanted = _path.Text.Trim();
-            try { wanted = Path.GetFullPath(wanted); }
+            try { wanted = Util.FitPath(Path.GetFullPath(wanted)); } // un nombre larguísimo se acorta, como IDM
             catch { Msg.Show(this, "La ruta no es válida.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); return false; }
             if (string.IsNullOrEmpty(Path.GetFileName(wanted))) { Msg.Show(this, "Escribe un nombre de archivo.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); return false; }
 

@@ -232,6 +232,11 @@ namespace IDMClone
                 mgr.PersistQueues = true;
                 Schedule sched = mgr.Schedule;
                 mgr.LoadList();
+                // Carpetas de categorías al idioma de IDMClone (las de una versión anterior estaban en inglés); antes de la
+                // ventana y de las colas, sin ninguna descarga en marcha. Lo que no se pueda renombrar se reintenta otro día.
+                bool foldersChanged;
+                CategoryFolders.Sync(cfg, mgr, null, out foldersChanged);
+                if (foldersChanged) cfg.Save();
 
                 Updater.CleanFolder(Updater.DownloadFolder); // instaladores de actualizaciones ya hechas
                 MainForm form = new MainForm(mgr, cfg, sched);

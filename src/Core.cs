@@ -293,6 +293,9 @@ namespace IDMClone
         public static string StateDir { get { return Path.Combine(Dir, "state"); } }
         public static string DownloadsPath { get { return Path.Combine(Dir, "downloads.json"); } }
 
+        // Para las pruebas: la carpeta Descargas de la configuración por defecto (así nunca apunta a la de verdad).
+        public static string DownloadsDirOverride;
+
         public static AppConfig CreateDefault()
         {
             AppConfig c = new AppConfig();
@@ -303,16 +306,16 @@ namespace IDMClone
             c.RetryDelaySec = 5;
             c.LaunchOnStart = false;
             c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) IDMClone/1.0";
-            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string dl = Path.Combine(home, "Downloads");
+            string dl = DownloadsDirOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
             c.DefaultFolder = dl;
             c.Categories = new List<Category>();
             c.Categories.Add(new Category("General", dl, ""));
-            c.Categories.Add(new Category("Comprimidos", Path.Combine(dl, "Compressed"), "zip rar 7z gz tar bz2 arj lzh ace sit"));
-            c.Categories.Add(new Category("Documentos", Path.Combine(dl, "Documents"), "pdf doc docx xls xlsx ppt pptx txt rtf odt"));
-            c.Categories.Add(new Category("Música", Path.Combine(dl, "Music"), "mp3 wav wma m4a aac ogg flac"));
-            c.Categories.Add(new Category("Vídeo", Path.Combine(dl, "Video"), "mp4 mkv avi mov wmv flv mpg mpeg m4v webm 3gp"));
-            c.Categories.Add(new Category("Programas", Path.Combine(dl, "Programs"), "exe msi msu cab bin iso img apk"));
+            // Las carpetas, en el idioma de IDMClone (IDM las pone siempre en inglés): ver CategoryFolders.
+            c.Categories.Add(new Category("Comprimidos", Path.Combine(dl, CategoryFolders.NameFor("Comprimidos")), "zip rar 7z gz tar bz2 arj lzh ace sit"));
+            c.Categories.Add(new Category("Documentos", Path.Combine(dl, CategoryFolders.NameFor("Documentos")), "pdf doc docx xls xlsx ppt pptx txt rtf odt"));
+            c.Categories.Add(new Category("Música", Path.Combine(dl, CategoryFolders.NameFor("Música")), "mp3 wav wma m4a aac ogg flac"));
+            c.Categories.Add(new Category("Vídeo", Path.Combine(dl, CategoryFolders.NameFor("Vídeo")), "mp4 mkv avi mov wmv flv mpg mpeg m4v webm 3gp"));
+            c.Categories.Add(new Category("Programas", Path.Combine(dl, CategoryFolders.NameFor("Programas")), "exe msi msu cab bin iso img apk"));
             c.UseTempFolder = true;
             c.TempFolder = null; // = %APPDATA%\IDMClone\DwnlData
             c.ServerLimits = new List<ServerLimit>();

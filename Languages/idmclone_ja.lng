@@ -144,6 +144,12 @@ Documentos=文書
 Música=音楽
 Vídeo=ビデオ
 Programas=プログラム
+; Carpetas de las categorías de siempre en Descargas (se renombran al cambiar de idioma)
+Carpeta: Comprimidos=圧縮ファイル
+Carpeta: Documentos=文書
+Carpeta: Música=音楽
+Carpeta: Vídeo=ビデオ
+Carpeta: Programas=プログラム
 No finalizadas=未完了
 Finalizadas=完了
 Colas=キュー
@@ -1226,3 +1232,6 @@ Estos subtítulos van dentro de trozos MP4: IDMClone no puede guardarlos aparte.
 La lista de los subtítulos está vacía.=字幕のリストが空です。
 Subtítulos, trozo %s de %d=字幕、セグメント %s / %d
 No se pudieron descifrar los subtítulos (clave AES-128 incorrecta).=字幕を復号できませんでした（AES-128 キーが正しくありません）。
+Estas carpetas de categorías no se pudieron pasar al idioma nuevo y se quedan como estaban:=次のカテゴリ フォルダーは新しい言語に変更できなかったため、そのままにしました:
+"%s": hay una descarga en curso guardándose en ella.="%s": 実行中のダウンロードがこのフォルダーに保存されています。
+"%s": ya existe "%s" con archivos.="%s": "%s" が既に存在し、ファイルがあります。

@@ -326,6 +326,9 @@ namespace IDMClone
             if (!noAudio)
             {
                 a = man.FindAudio(_item.MediaAudio);
+                // La sonda ofreció como audio una lista suelta por su inicialización (sin vídeo); aquí, sin bajarla, vuelve a
+                // salir como "muxed": se baja esa misma lista como el audio.
+                if (a == null && audioOnly) a = man.FindVideo(_item.MediaAudio);
                 if (a == null) a = v != null ? man.AudioFor(v) : (man.Audios.Count > 0 ? man.Audios[0] : null);
             }
             if (v == null && a == null) throw new FatalDownloadException("La lista de reproducción no tiene ningún vídeo.");
@@ -355,6 +358,12 @@ namespace IDMClone
             string final;
             string text = e.FetchText(url, out final);
             MediaManifest m = MediaManifest.Parse(text, final);
+            if (m.Kind == "hls" && m.Videos.Count == 1 && m.Audios.Count == 0 && m.Videos[0].Playlist != null && e.InitIsAudioOnly(m.Videos[0].Playlist))
+            {
+                // Lista suelta con inicialización fMP4 sin pista de vídeo (la de X /pl/mp4a/... sin su maestra): es un audio.
+                MediaTrack only = m.Videos[0];
+                only.Kind = "audio"; m.Videos.Clear(); m.Audios.Add(only);
+            }
             // HLS: la duración está en la lista de cada calidad (se mira la más ligera).
             if (m.Kind == "hls" && m.Duration <= 0 && m.Videos.Count > 0)
             {
@@ -399,7 +408,10 @@ namespace IDMClone
                 o["kind"] = "audio"; o["video"] = null; o["audio"] = a.Key; o["language"] = a.Language;
                 o["bandwidth"] = a.Bandwidth;
                 o["size"] = !m.Live && m.Duration > 0 && a.Bandwidth > 0 ? (long)(a.Bandwidth / 8.0 * m.Duration) : -1;
-                o["ext"] = a.Container == "webm" ? ".webm" : ".m4a";
+                // Trozos .aac sueltos (ADTS) se juntan tal cual: sale un .aac, no un .m4a.
+                bool adts = a.Playlist != null && a.Playlist.Init == null && a.Playlist.Segments.Count > 0
+                            && a.Playlist.Segments[0].Url.Split('?')[0].EndsWith(".aac", StringComparison.OrdinalIgnoreCase);
+                o["ext"] = a.Container == "webm" ? ".webm" : adts ? ".aac" : ".m4a";
                 items.Add(o);
             }
             // Subtítulos (como IDM): se bajan aparte, junto al vídeo. Los que van dentro de trozos MP4 no se ofrecen.
@@ -419,10 +431,26 @@ namespace IDMClone
             // Las listas de cada calidad: la extensión no las toma por vídeos nuevos.
             List<string> children = new List<string>();
             foreach (MediaTrack t in m.Videos) if (m.Kind == "hls" && t.Key != final) children.Add(t.Key);
-            foreach (MediaTrack t in m.Audios) if (m.Kind == "hls") children.Add(t.Key);
+            foreach (MediaTrack t in m.Audios) if (m.Kind == "hls" && t.Key != final) children.Add(t.Key);
             foreach (MediaTrack t in m.Subtitles) if (m.Kind == "hls" && t.Key != final) children.Add(t.Key);
             r["children"] = children;
             return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(r);
+        }
+
+        // ¿La inicialización fMP4 (EXT-X-MAP) de esta lista solo tiene audio? Se baja (es pequeña) y se miran sus pistas.
+        // Ante cualquier duda (sin EXT-X-MAP, cifrada, no se puede bajar o leer): no, sigue siendo un vídeo.
+        bool InitIsAudioOnly(MediaPlaylist p)
+        {
+            if (p.Init == null || p.Init.KeyUrl != null || p.Protected) return false;
+            try
+            {
+                string final;
+                byte[] init = FetchBytes(p.Init.Url, p.Init.RangeStart >= 0 ? p.Init.RangeStart : 0,
+                                         p.Init.RangeLength > 0 ? p.Init.RangeLength : 256 * 1024, out final);
+                List<string> h = Fmp4Reader.Handlers(init);
+                return h.Contains("soun") && !h.Contains("vide");
+            }
+            catch (Exception) { return false; }
         }
 
         static MediaTrack WholeFile(string kind, string url)
@@ -768,7 +796,10 @@ namespace IDMClone
             string vRaw = v != null ? ConcatTrack(dir, jobs, 'v', "video.raw") : null;
             string aRaw = a != null ? ConcatTrack(dir, jobs, 'a', "audio.raw") : null;
             string vFmt = vRaw != null ? Sniff(vRaw) : null, aFmt = aRaw != null ? Sniff(aRaw) : null;
-            string name = Path.GetFileNameWithoutExtension(_item.FilePath);
+            // Nombre corto dentro de la carpeta de trabajo (la temporal): con el título entero se pasaba del límite de ruta.
+            // El nombre final sale de FilePath (SetOutput solo cambia la extensión).
+            string name = Util.Shorten(Path.GetFileNameWithoutExtension(_item.FilePath), 40);
+            if (name.Length == 0) name = "video";
             Func<bool> cancelled = delegate { return MediaCancelled; };
 
             if (vRaw != null && aRaw != null && _cfg.MergeAudioVideo)
@@ -819,7 +850,7 @@ namespace IDMClone
         {
             string audio = it.SeparateAudio;
             if (string.IsNullOrEmpty(audio)) return;
-            string dest = Path.Combine(Path.GetDirectoryName(it.FilePath), Path.GetFileNameWithoutExtension(it.FilePath) + " (audio)" + Path.GetExtension(audio));
+            string dest = Util.FitPath(Path.Combine(Path.GetDirectoryName(it.FilePath), Path.GetFileNameWithoutExtension(it.FilePath) + " (audio)" + Path.GetExtension(audio)));
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(dest));
@@ -868,7 +899,7 @@ namespace IDMClone
             string ext = Path.GetExtension(workFile);
             if (!string.Equals(Path.GetExtension(_item.FilePath), ext, StringComparison.OrdinalIgnoreCase))
             {
-                _item.FilePath = Path.ChangeExtension(_item.FilePath, ext);
+                _item.FilePath = Util.FitPath(Path.ChangeExtension(_item.FilePath, ext));
                 Action<DownloadItem> h = PathChanged; if (h != null) h(_item);
             }
             return workFile;

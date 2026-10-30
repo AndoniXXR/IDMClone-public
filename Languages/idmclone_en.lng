@@ -144,6 +144,12 @@ Documentos=Documents
 Música=Music
 Vídeo=Video
 Programas=Programs
+; Carpetas de las categorías de siempre en Descargas (se renombran al cambiar de idioma)
+Carpeta: Comprimidos=Compressed
+Carpeta: Documentos=Documents
+Carpeta: Música=Music
+Carpeta: Vídeo=Video
+Carpeta: Programas=Programs
 No finalizadas=Unfinished
 Finalizadas=Finished
 Colas=Queues
@@ -1220,3 +1226,6 @@ Estos subtítulos van dentro de trozos MP4: IDMClone no puede guardarlos aparte.
 La lista de los subtítulos está vacía.=The subtitle playlist is empty.
 Subtítulos, trozo %s de %d=Subtitles, segment %s of %d
 No se pudieron descifrar los subtítulos (clave AES-128 incorrecta).=Could not decrypt the subtitles (wrong AES-128 key).
+Estas carpetas de categorías no se pudieron pasar al idioma nuevo y se quedan como estaban:=These category folders could not be switched to the new language and were left as they were:
+"%s": hay una descarga en curso guardándose en ella.="%s": a download in progress is being saved in it.
+"%s": ya existe "%s" con archivos.="%s": "%s" already exists and has files.

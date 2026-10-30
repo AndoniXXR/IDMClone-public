@@ -217,7 +217,9 @@ namespace IDMClone
                 only.Playlist = ParseMedia(text, url);
                 // La lista de unos subtítulos (trozos .vtt) no es un vídeo.
                 if (IsSubtitlePlaylist(only.Playlist)) { only.Kind = "subtitle"; only.MimeType = "text/vtt"; m.Subtitles.Add(only); return m; }
-                m.Videos.Add(only);
+                // Ni la de un audio suelto (trozos .aac, .mp3...: la de X sin su lista maestra): se ofrece como audio.
+                if (IsAudioPlaylist(only.Playlist)) { only.Kind = "audio"; m.Audios.Add(only); }
+                else m.Videos.Add(only);
                 m.Duration = only.Playlist.Duration; m.Live = only.Playlist.Live; m.Protected = only.Playlist.Protected;
                 return m;
             }
@@ -268,10 +270,9 @@ namespace IDMClone
                     if (p.Length == 2) { int.TryParse(p[0], out v.Width); int.TryParse(p[1], out v.Height); }
                 }
                 v.AudioGroup = Get(pending, "AUDIO");
-                // Sin resolución y solo con códec de audio: es una pista solo de audio.
-                bool audioOnly = res == null && v.Codecs.Length > 0 && v.Codecs.IndexOf("avc", StringComparison.OrdinalIgnoreCase) < 0
-                                 && v.Codecs.IndexOf("hvc", StringComparison.OrdinalIgnoreCase) < 0 && v.Codecs.IndexOf("hev", StringComparison.OrdinalIgnoreCase) < 0
-                                 && v.Codecs.IndexOf("vp0", StringComparison.OrdinalIgnoreCase) < 0 && v.Codecs.IndexOf("av01", StringComparison.OrdinalIgnoreCase) < 0;
+                // Sin resolución y todos sus códecs de audio: es una pista solo de audio. Un códec que no se conoce
+                // (mp4v, vp8, dvh1...) cuenta como vídeo: mejor ofrecer un audio como vídeo que perder un vídeo.
+                bool audioOnly = res == null && AllAudioCodecs(v.Codecs);
                 v.Kind = audioOnly ? "audio" : (string.IsNullOrEmpty(v.AudioGroup) || !HasAudioGroup(m, v.AudioGroup) ? "muxed" : "video");
                 pending = null;
                 if (!seen.Add("v:" + v.Key)) continue;
@@ -294,16 +295,54 @@ namespace IDMClone
             return false;
         }
 
+        // Códecs de audio (RFC 6381 y guía de Apple para HLS), por la parte antes del primer punto ("mp4a.40.2" -> "mp4a").
+        static readonly HashSet<string> AudioCodecs = new HashSet<string>(new string[] {
+            "mp4a", "aac", "mp3", "ac-3", "ec-3", "ac-4", "opus", "flac", "vorbis", "alac",
+            "dtsc", "dtse", "dtsh", "dtsl", "dtsx", "dtsy", "mhm1", "mhm2", "mha1", "mha2", "ipcm", "fpcm", "lpcm" });
+
+        // ¿Todos los códecs de CODECS son de audio? Vacío = no se sabe (no es audio).
+        public static bool AllAudioCodecs(string codecs)
+        {
+            int n = 0;
+            foreach (string part in (codecs ?? "").Split(','))
+            {
+                string c = part.Trim(' ', '\t', '"', '\'').TrimStart('.').ToLowerInvariant();
+                if (c.Length == 0) continue;
+                int dot = c.IndexOf('.');
+                if (!AudioCodecs.Contains(dot < 0 ? c : c.Substring(0, dot))) return false;
+                n++;
+            }
+            return n > 0;
+        }
+
+        static string SegmentExt(MediaSegment s)
+        {
+            string path = s.Url;
+            try { path = new Uri(s.Url).AbsolutePath; } catch { }
+            return System.IO.Path.GetExtension(path ?? "").ToLowerInvariant();
+        }
+
         // ¿Es la lista de unos subtítulos? Todos sus trozos son .vtt/.webvtt (o .srt).
         public static bool IsSubtitlePlaylist(MediaPlaylist p)
         {
             if (p == null || p.Segments.Count == 0 || p.Init != null) return false;
             foreach (MediaSegment s in p.Segments)
             {
-                string path = s.Url;
-                try { path = new Uri(s.Url).AbsolutePath; } catch { }
-                string e = System.IO.Path.GetExtension(path ?? "").ToLowerInvariant();
+                string e = SegmentExt(s);
                 if (e != ".vtt" && e != ".webvtt" && e != ".srt") return false;
+            }
+            return true;
+        }
+
+        // ¿Es la lista de un audio suelto? Todos sus trozos tienen extensión de audio. Si no se sabe (.ts, .m4s, sin
+        // extensión), no: sigue siendo un vídeo (la sonda mira además la inicialización fMP4, ver ProbeMedia).
+        public static bool IsAudioPlaylist(MediaPlaylist p)
+        {
+            if (p == null || p.Segments.Count == 0) return false;
+            foreach (MediaSegment s in p.Segments)
+            {
+                string e = SegmentExt(s);
+                if (e != ".aac" && e != ".m4a" && e != ".mp3" && e != ".ac3" && e != ".ec3" && e != ".opus" && e != ".flac") return false;
             }
             return true;
         }

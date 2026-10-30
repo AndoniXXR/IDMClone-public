@@ -1167,8 +1167,8 @@ namespace IDMClone
             if (l.Count == 0 || string.IsNullOrEmpty(l[0].SaveTo)) return;
             try
             {
-                if (File.Exists(l[0].SaveTo)) { if (folder) Process.Start("explorer.exe", "/select,\"" + l[0].SaveTo + "\""); else Process.Start(l[0].SaveTo); }
-                else if (folder && Directory.Exists(Path.GetDirectoryName(l[0].SaveTo))) Process.Start("explorer.exe", "\"" + Path.GetDirectoryName(l[0].SaveTo) + "\"");
+                if (folder) Shell.OpenFolder(l[0].SaveTo); // como "Abrir carpeta" de la lista (reutiliza la ventana del Explorador)
+                else if (File.Exists(l[0].SaveTo)) Process.Start(l[0].SaveTo);
             }
             catch (Exception ex) { Say(ex.Message, MessageBoxIcon.Warning); }
         }

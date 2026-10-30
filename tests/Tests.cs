@@ -26,6 +26,7 @@ namespace IDMClone.Tests
             MainForm.ShutdownAction = delegate { Console.WriteLine("  (apagado del equipo simulado: no se apaga)"); };
             FinishOptions.Hook = delegate(string mode, bool force) { Console.WriteLine("  (" + mode + (force ? ", forzado" : "") + " simulado: el equipo no se toca)"); };
             MainForm.RunFileHook = delegate(string p) { };
+            Shell.OpenFolderHook = delegate(string p, bool select) { }; // "Abrir carpeta" no abre el Explorador
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "--exe" && i + 1 < args.Length) ExePath = args[++i];
@@ -42,6 +43,7 @@ namespace IDMClone.Tests
             Dl = Path.Combine(Home, "dl");
             Directory.CreateDirectory(Dl);
             AppConfig.HomeOverride = Home;
+            AppConfig.DownloadsDirOverride = Path.Combine(Home, "Descargas"); // la configuración por defecto nunca apunta a la de verdad
             Environment.SetEnvironmentVariable("IDMCLONE_HOME", Home);
             Cfg().Save(); // config.json de la carpeta de pruebas (la usa también la GUI en los e2e)
 
@@ -116,6 +118,9 @@ namespace IDMClone.Tests
             RunFixesF();
             RunFixesG();
             RunVentanaA();
+            RunCarpeta();
+            RunNombreLargo();
+            RunCarpetasIdioma();
             RunAutoCancel();
             RunSubtitles();
             RunExtProxy();

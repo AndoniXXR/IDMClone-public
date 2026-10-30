@@ -144,6 +144,12 @@ Documentos=文档
 Música=音乐
 Vídeo=视频
 Programas=程序
+; Carpetas de las categorías de siempre en Descargas (se renombran al cambiar de idioma)
+Carpeta: Comprimidos=压缩文件
+Carpeta: Documentos=文档
+Carpeta: Música=音乐
+Carpeta: Vídeo=视频
+Carpeta: Programas=程序
 No finalizadas=未完成
 Finalizadas=已完成
 Colas=队列
@@ -1226,3 +1232,6 @@ Estos subtítulos van dentro de trozos MP4: IDMClone no puede guardarlos aparte.
 La lista de los subtítulos está vacía.=字幕列表为空。
 Subtítulos, trozo %s de %d=字幕，第 %s 段，共 %d 段
 No se pudieron descifrar los subtítulos (clave AES-128 incorrecta).=无法解密字幕（AES-128 密钥错误）。
+Estas carpetas de categorías no se pudieron pasar al idioma nuevo y se quedan como estaban:=以下分类文件夹无法切换到新语言，已保持原样：
+"%s": hay una descarga en curso guardándose en ella.="%s"：有正在进行的下载保存在其中。
+"%s": ya existe "%s" con archivos.="%s"："%s" 已存在且包含文件。

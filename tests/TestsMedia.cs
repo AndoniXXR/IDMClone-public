@@ -28,6 +28,9 @@ namespace IDMClone.Tests
             Run("vídeo: unión WebM (VP9 + Opus) con pista renumerada e índice", TM_WebmMerge);
             Run("vídeo: sonda del panel (calidades, tamaño estimado, listas hijas)", TM_Probe);
             Run("vídeo: opciones del panel y mezcla en Opciones > General", TM_PanelOptions);
+            Run("vídeo: calidad HLS sin RESOLUTION es audio solo si todos sus códecs son de audio", TM_HlsAudioCodecs);
+            Run("vídeo: lista maestra como la de X (grupos de audio + avc1) da vídeos con su audio", TM_HlsXMaster);
+            Run("vídeo: lista suelta de solo audio (.aac o fMP4 sin vídeo) se ofrece y se baja como audio", TM_HlsLoneAudio);
         }
 
         // ------------------------------------------------------------------ generadores
@@ -640,6 +643,110 @@ namespace IDMClone.Tests
             Check((string)((Dictionary<string, object>)items[0])["audio"] == "a", "La calidad lleva su audio");
             string err = NativeHost.ProbeReply("{\"type\":\"probe\",\"url\":\"" + S.Base + "/s/no-existe.m3u8\"}");
             Check(err.Contains("\"ok\":false"), "Lista inexistente: " + err);
+        }
+
+        static void TM_HlsAudioCodecs()
+        {
+            Func<string, MediaManifest> one = delegate(string codecs)
+            {
+                string attr = codecs == null ? "" : ",CODECS=\"" + codecs + "\"";
+                return Hls.ParseMaster("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000" + attr + "\nq.m3u8\n", "https://ej.com/m.m3u8");
+            };
+            // Códecs de vídeo que no se conocían antes (o ninguno): son vídeos, no audio.
+            foreach (string c in new string[] { "mp4v.20.9,mp4a.40.2", "vp8,vorbis", "dvh1.05.01,ec-3", "mp4a.40.2,avc1.4d401e", "", null })
+            {
+                MediaManifest m = one(c);
+                Check(m.Videos.Count == 1 && m.Audios.Count == 0 && m.Videos[0].Kind == "muxed", "Debería ser vídeo: " + c + " -> " + m.Videos.Count + "/" + m.Audios.Count);
+            }
+            foreach (string c in new string[] { "mp4a.40.2", "ec-3", "opus", " MP4A.40.5 , ec-3 ", "ac-4.02.01.01,mp4a.40.2", "fLaC", "dtsx" })
+            {
+                MediaManifest m = one(c);
+                Check(m.Audios.Count == 1 && m.Videos.Count == 0 && m.Audios[0].Kind == "audio", "Debería ser audio: " + c + " -> " + m.Videos.Count + "/" + m.Audios.Count);
+            }
+            // Con RESOLUTION siempre es vídeo, aunque los códecs digan otra cosa.
+            MediaManifest r = Hls.ParseMaster("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360,CODECS=\"mp4a.40.2\"\nq.m3u8\n", "https://ej.com/m.m3u8");
+            Check(r.Videos.Count == 1 && r.Videos[0].Height == 360, "Con RESOLUTION");
+        }
+
+        static void TM_HlsXMaster()
+        {
+            string master = "#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n" +
+                "#EXT-X-MEDIA:NAME=\"Audio\",TYPE=AUDIO,GROUP-ID=\"audio-32000\",AUTOSELECT=YES,URI=\"/ext_tw_video/1/pu/pl/mp4a/32000/a.m3u8\"\n" +
+                "#EXT-X-MEDIA:NAME=\"Audio\",TYPE=AUDIO,GROUP-ID=\"audio-128000\",AUTOSELECT=YES,URI=\"/ext_tw_video/1/pu/pl/mp4a/128000/b.m3u8\"\n" +
+                "#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=256000,BANDWIDTH=400000,RESOLUTION=480x270,CODECS=\"mp4a.40.2,avc1.4D401E\",AUDIO=\"audio-32000\"\n/ext_tw_video/1/pu/pl/avc1/480x270/c.m3u8\n" +
+                "#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=2176000,BANDWIDTH=2500000,RESOLUTION=1280x720,CODECS=\"mp4a.40.2,avc1.640020\",AUDIO=\"audio-128000\"\n/ext_tw_video/1/pu/pl/avc1/1280x720/d.m3u8\n";
+            MediaManifest m = Hls.ParseMaster(master, "https://video.twimg.com/ext_tw_video/1/pu/pl/x.m3u8?tag=12");
+            Check(m.Videos.Count == 2 && m.Audios.Count == 2, "Pistas: " + m.Videos.Count + "/" + m.Audios.Count);
+            Check(m.Videos[0].Height == 720 && m.Videos[0].Kind == "video" && m.Videos[1].Kind == "video", "Calidades de vídeo");
+            MediaTrack a = m.AudioFor(m.Videos[0]);
+            Check(a != null && a.Key == "https://video.twimg.com/ext_tw_video/1/pu/pl/mp4a/128000/b.m3u8", "Audio del grupo: " + (a != null ? a.Key : "ninguno"));
+            Check(m.AudioFor(m.Videos[1]).AudioGroup == "audio-32000", "Audio de la calidad baja");
+        }
+
+        // Fotogramas ADTS (AAC) de relleno: lo que lleva un trozo .aac de HLS.
+        static byte[] MakeAdts(int frames, int tag)
+        {
+            MemoryStream o = new MemoryStream();
+            for (int i = 0; i < frames; i++)
+            {
+                int len = 7 + 40;
+                byte[] fr = new byte[len];
+                fr[0] = 0xFF; fr[1] = 0xF1; fr[2] = (byte)(1 << 6 | 4 << 2 | 0); fr[3] = (byte)(2 << 6 | len >> 11);
+                fr[4] = (byte)(len >> 3); fr[5] = (byte)((len & 7) << 5 | 0x1F); fr[6] = 0xFC;
+                for (int q = 7; q < len; q++) fr[q] = (byte)(tag + i);
+                o.Write(fr, 0, len);
+            }
+            return o.ToArray();
+        }
+
+        static Dictionary<string, object> ProbeOne(string url)
+        {
+            Dictionary<string, object> r = AppConfig.NewSerializer().Deserialize<Dictionary<string, object>>(NativeHost.ProbeReply("{\"type\":\"probe\",\"url\":\"" + url + "\"}"));
+            Check(r["ok"].Equals(true), "Sonda: " + new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(r));
+            object[] items = Arr(r["items"]);
+            Check(items.Length == 1, "Elementos de la sonda: " + items.Length + " " + url);
+            Check(Arr(r["children"]).Length == 0, "La propia lista como hija: " + url);
+            return (Dictionary<string, object>)items[0];
+        }
+
+        static void TM_HlsLoneAudio()
+        {
+            // Trozos .aac sueltos (ADTS), sin lista maestra.
+            int total = 0;
+            for (int i = 0; i < 3; i++) { byte[] s = MakeAdts(20, i * 10); total += s.Length; S.Put("hls-aac/s" + i + ".aac", s, "audio/aac"); }
+            string aac = S.Put("hls-aac/a.m3u8", HlsMedia(3, "s{0}.aac", null), "application/vnd.apple.mpegurl");
+            MediaManifest pm = Hls.ParseMaster(HlsMedia(3, "s{0}.aac?t=1", null), "https://ej.com/a.m3u8");
+            Check(pm.Videos.Count == 0 && pm.Audios.Count == 1 && pm.Audios[0].Kind == "audio" && Math.Abs(pm.Duration - 6) < 1e-6, "Lista .aac (sin red)");
+            Dictionary<string, object> it = ProbeOne(aac);
+            Check((string)it["kind"] == "audio" && (string)it["audio"] == aac && it["video"] == null && (string)it["ext"] == ".aac", "Sonda .aac: " + new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(it));
+
+            // fMP4 sin vídeo (como /pl/mp4a/128000/... de X): lo dice su inicialización.
+            S.Put("hls-fa/init.mp4", FInit(1, false, 48000), "audio/mp4");
+            for (int i = 0; i < 2; i++) S.Put("hls-fa/" + i + ".m4s", FSeg((uint)i + 1, 1, i * 94 * 1024L, 94, 1024, false, 100 + i), "audio/mp4");
+            string fa = S.Put("hls-fa/a.m3u8", HlsMedia(2, "{0}.m4s", "#EXT-X-MAP:URI=\"init.mp4\"\n"), "application/vnd.apple.mpegurl");
+            it = ProbeOne(fa);
+            Check((string)it["kind"] == "audio" && (string)it["audio"] == fa && (string)it["ext"] == ".m4a", "Sonda fMP4 de audio: " + new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(it));
+
+            // Las de vídeo siguen siendo vídeo: trozos .ts y fMP4 con pista de vídeo.
+            PutHls("hls-lone-ts", 2);
+            it = ProbeOne(S.Base + "/s/hls-lone-ts/v.m3u8");
+            Check((string)it["kind"] == "video", "Lista .ts: " + it["kind"]);
+            S.Put("hls-fv/init.mp4", FInit(1, true, 12800), "video/mp4");
+            S.Put("hls-fv/0.m4s", FSeg(1, 1, 0, 50, 512, true, 0), "video/mp4");
+            it = ProbeOne(S.Put("hls-fv/v.m3u8", HlsMedia(1, "{0}.m4s", "#EXT-X-MAP:URI=\"init.mp4\"\n"), "application/vnd.apple.mpegurl"));
+            Check((string)it["kind"] == "video", "Lista fMP4 de vídeo: " + it["kind"]);
+
+            // Bajarlas como hace la extensión con un elemento "audio" (mediaAudio = la lista, sin mediaVideo).
+            DownloadManager m = NewMgr();
+            DownloadItem d = AddMedia(m, aac, "hls", "pista.m4a", null, aac, true);
+            WaitEnd(d, 30);
+            Check(d.Status == DownloadStatus.Complete && Path.GetExtension(d.FilePath) == ".aac" && new FileInfo(d.FilePath).Length == total,
+                  "Bajar .aac: " + d.Status + " " + d.FilePath + " " + d.Error);
+            DownloadItem f = AddMedia(m, fa, "hls", "pista2.m4a", null, fa, true);
+            WaitEnd(f, 30);
+            Check(f.Status == DownloadStatus.Complete && Path.GetExtension(f.FilePath) == ".m4a", "Bajar fMP4 de audio: " + f.Status + " " + f.FilePath + " " + f.Error);
+            List<MediaTrackData> t = Tracks(f.FilePath);
+            Check(t.Count == 1 && !t[0].IsVideo && t[0].Samples.Count == 2 * 94, "Pistas del .m4a: " + t.Count);
         }
 
         static void TM_PanelOptions()

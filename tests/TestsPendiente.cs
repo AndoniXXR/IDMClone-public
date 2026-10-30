@@ -422,7 +422,7 @@ namespace IDMClone.Tests
                 Check(it.Pending && it.HeldInTemp && File.Exists(it.TempPath), "Se perdió la descarga");
                 m.Confirm(it);
                 CheckPlaced(it, existing, size, temp);
-                Check(!File.Exists(existing + ".idmclone-viejo"), "Quedó apartado el archivo anterior");
+                Check(Directory.GetFiles(Path.GetDirectoryName(existing), "*.idmclone-viejo").Length == 0, "Quedó apartado el archivo anterior");
             }
         }
 

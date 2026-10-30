@@ -534,7 +534,7 @@ test("panel: vídeo directo grande sí, pequeño no; desactivado o sitio excluid
   assert.equal(t.calls.filter((c) => c[0] === "tabMsg").length, 0);
 });
 
-test("panel: si el reproductor pide una calidad antes de que IDMClone lea la maestra, se quita del panel", async () => {
+test("panel: si el reproductor pide una calidad antes de que IDMClone lea la maestra, espera a la maestra y no sale", async () => {
   const variant = { ok: true, kind: "hls", url: PROBE.children[0], duration: 634.6, children: [],
                     items: [{ kind: "video", video: PROBE.children[0], width: 0, height: 0, size: -1, ext: ".mp4" }] };
   const t = loadBackground({ appConfig: { ok: true, exts: ["zip"], mediaPanel: true },
@@ -545,7 +545,18 @@ test("panel: si el reproductor pide una calidad antes de que IDMClone lea la mae
   t.L.headers(hdr(PROBE.children[0], "xmlhttprequest", "application/vnd.apple.mpegurl"));
   await wait(200);
   const msgs = t.calls.filter((c) => c[0] === "tabMsg").map((c) => c[2].type + ":" + (c[2].entry ? c[2].entry.url : c[2].url));
-  assert.deepEqual(msgs, ["idm-media:" + PROBE.children[0], "idm-media-remove:" + PROBE.children[0], "idm-media:https://cdn.ejemplo.com/v/master.m3u8"]);
+  // Sin aparecer un momento y desaparecer (lo que se veía en X): solo la maestra.
+  assert.deepEqual(msgs, ["idm-media:https://cdn.ejemplo.com/v/master.m3u8"]);
+});
+
+test("panel: lista de una sola calidad sin maestra en la pestaña -> se ofrece sin esperar", async () => {
+  const lone = { ok: true, kind: "hls", url: "https://cdn.ejemplo.com/v/solo.m3u8", duration: 60, children: [],
+                 items: [{ kind: "video", video: "https://cdn.ejemplo.com/v/solo.m3u8", width: 0, height: 0, size: -1, ext: ".mp4" }] };
+  const t = loadBackground({ appConfig: { ok: true, exts: ["zip"], mediaPanel: true }, hostReply: (m) => (m.type === "probe" ? lone : { ok: true }) });
+  t.L.headers(hdr("https://cdn.ejemplo.com/v/solo.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  const msgs = t.calls.filter((c) => c[0] === "tabMsg").map((c) => c[2].type + ":" + (c[2].entry ? c[2].entry.url : c[2].url));
+  assert.deepEqual(msgs, ["idm-media:https://cdn.ejemplo.com/v/solo.m3u8"]);
 });
 
 // ------------------------------------------------------------------ directos y archivos pedidos a trozos
@@ -608,6 +619,110 @@ test("panel: el audio pequeño de un vídeo pedido a trozos no se ofrece solo, p
   const pair = t.calls.filter((c) => c[0] === "tabMsg" && c[2].type === "idm-media" && c[2].entry.kind === "pair");
   assert.equal(pair.length, 1);
   assert.equal(pair[0][2].entry.items[0].audio, "https://cdn.x.com/v/audio_64.mp4");
+});
+
+// Mínimos por defecto de IDMClone (1 MB vídeo, 300 KB audio); mp4/m4a no están en la lista: cuentan los generales.
+const CFG_MIN = { ok: true, exts: ["zip"], mediaPanel: true, minVideoKB: 1024, minAudioKB: 300, mediaTypes: [{ ext: "flv", minKB: 0, on: true }] };
+const shown = (t) => panelMsgs(t).filter((x) => x.type === "idm-media").map((x) => x.entry);
+const panelMsgs = (t) => t.calls.filter((c) => c[0] === "tabMsg").map((c) => c[2]);
+function hlsWith(items) { return { ok: true, kind: "hls", url: "https://cdn.x.com/v/master.m3u8", duration: 20, live: false, protected: false, children: [], items }; }
+const X_AUDIO = { kind: "audio", audio: "https://cdn.x.com/v/a128.m3u8", size: 320000, ext: ".m4a" };
+
+test("panel: lista HLS de baja resolución (todos los vídeos pequeños) -> se ofrece el vídeo con su audio, no el audio solo", async () => {
+  const probe = hlsWith([{ kind: "video", video: "https://cdn.x.com/v/270.m3u8", width: 480, height: 270, size: 700000, ext: ".mp4" },
+                         { kind: "video", video: "https://cdn.x.com/v/180.m3u8", width: 320, height: 180, size: 400000, ext: ".mp4" }, X_AUDIO]);
+  const t = loadBackground({ appConfig: CFG_MIN, hostReply: (m) => (m.type === "probe" ? probe : { ok: true }) });
+  t.L.headers(hdr("https://cdn.x.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  t.L.headers(ranged("https://cdn.x.com/v/todo.mp4?range=0-99", "video/mp4", 90000000)); // trozo de la lista: no es otro vídeo
+  await wait(40);
+  const e = shown(t);
+  assert.equal(e.length, 1, JSON.stringify(panelMsgs(t)));
+  assert.equal(e[0].media, "video");
+  assert.deepEqual(e[0].items.map((i) => i.kind + ":" + (i.height || 0)), ["video:270", "video:180", "audio:0"]);
+  // Con el tipo mp4 desmarcado, esas calidades no salen (decisión del usuario): solo el audio, como hasta ahora.
+  const t2 = loadBackground({ appConfig: Object.assign({}, CFG_MIN, { mediaTypes: [{ ext: "mp4", minKB: 0, on: false }] }),
+                              hostReply: (m) => (m.type === "probe" ? probe : { ok: true }) });
+  t2.L.headers(hdr("https://cdn.x.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  assert.deepEqual(shown(t2).map((x) => x.media), ["audio"]);
+});
+
+test("panel: lista HLS solo de audio sí se ofrece; con los tipos de vídeo desmarcados, el audio también (como hasta ahora)", async () => {
+  let t = loadBackground({ appConfig: CFG_MIN, hostReply: (m) => (m.type === "probe" ? hlsWith([X_AUDIO]) : { ok: true }) });
+  t.L.headers(hdr("https://cdn.x.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  let e = shown(t);
+  assert.equal(e.length, 1); assert.equal(e[0].media, "audio");
+  const probe = hlsWith([{ kind: "video", video: "https://cdn.x.com/v/720.m3u8", width: 1280, height: 720, size: 9000000, ext: ".mp4" }, X_AUDIO]);
+  t = loadBackground({ appConfig: Object.assign({}, CFG_MIN, { mediaTypes: [{ ext: "mp4", minKB: 0, on: false }] }), hostReply: (m) => (m.type === "probe" ? probe : { ok: true }) });
+  t.L.headers(hdr("https://cdn.x.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  e = shown(t);
+  assert.equal(e.length, 1); assert.equal(e[0].media, "audio");
+});
+
+test("panel: lista HLS con un vídeo grande y otro pequeño -> el grande, con su audio", async () => {
+  const probe = hlsWith([{ kind: "video", video: "https://cdn.x.com/v/720.m3u8", width: 1280, height: 720, size: 9000000, ext: ".mp4" },
+                         { kind: "video", video: "https://cdn.x.com/v/180.m3u8", width: 320, height: 180, size: 400000, ext: ".mp4" }, X_AUDIO]);
+  const t = loadBackground({ appConfig: CFG_MIN, hostReply: (m) => (m.type === "probe" ? probe : { ok: true }) });
+  t.L.headers(hdr("https://cdn.x.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  const e = shown(t);
+  assert.equal(e.length, 1); assert.equal(e[0].media, "video");
+  assert.deepEqual(e[0].items.map((i) => i.kind + ":" + i.size), ["video:9000000", "audio:320000"]);
+});
+
+test("panel: audio a trozos y luego un vídeo pequeño -> nada (el audio no sale solo como música)", async () => {
+  let t = loadBackground({ appConfig: CFG_MIN, hostReply: () => ({ ok: true }) });
+  t.bg.MEDIA_TIMING.audioWait = 40;
+  t.L.headers(ranged("https://cdn.x.com/v/audio_128.mp4?bytestart=0&byteend=9", "audio/mp4", 5000000));
+  await wait(15);
+  t.L.headers(ranged("https://cdn.x.com/v/video_270.mp4?bytestart=0&byteend=9", "video/mp4", 400000));
+  await wait(100);
+  assert.equal(panelMsgs(t).filter((x) => x.type === "idm-media").length, 0, JSON.stringify(panelMsgs(t)));
+  // Si el vídeo pequeño llega cuando el audio ya salía solo, se quita del panel.
+  t = loadBackground({ appConfig: CFG_MIN, hostReply: () => ({ ok: true }) });
+  t.bg.MEDIA_TIMING.audioWait = 20;
+  t.L.headers(ranged("https://cdn.x.com/v/audio_128.mp4?bytestart=0&byteend=9", "audio/mp4", 5000000));
+  await wait(80);
+  assert.equal(shown(t).length, 1);
+  t.L.headers(ranged("https://cdn.x.com/v/video_270.mp4?bytestart=0&byteend=9", "video/mp4", 400000));
+  await wait(40);
+  assert.ok(panelMsgs(t).some((x) => x.type === "idm-media-remove" && x.url === "https://cdn.x.com/v/audio_128.mp4"), "el audio solo no se quitó");
+  assert.equal(shown(t).length, 1, "nada nuevo en el panel");
+});
+
+test("panel: audio a trozos antes que su vídeo -> un solo par, sin enseñar antes el audio solo", async () => {
+  const t = loadBackground({ appConfig: CFG_MIN, hostReply: () => ({ ok: true }) });
+  t.bg.MEDIA_TIMING.audioWait = 40;
+  t.L.headers(ranged("https://cdn.x.com/v/audio_128.mp4?bytestart=0&byteend=9", "audio/mp4", 5000000));
+  await wait(15);
+  assert.equal(shown(t).length, 0, "el audio no debe salir antes de esperar a su vídeo");
+  t.L.headers(ranged("https://cdn.x.com/v/video_720.mp4?bytestart=0&byteend=9", "video/mp4", 40000000));
+  await wait(100);
+  const e = shown(t);
+  assert.deepEqual(e.map((x) => x.kind), ["pair"], JSON.stringify(e));
+  assert.deepEqual([e[0].items[0].video, e[0].items[0].audio, e[0].items[0].size], ["https://cdn.x.com/v/video_720.mp4", "https://cdn.x.com/v/audio_128.mp4", 45000000]);
+});
+
+test("panel: audio a trozos sin ningún vídeo -> se ofrece solo tras la espera; si la página cambia antes, no", async () => {
+  let t = loadBackground({ appConfig: CFG_MIN, hostReply: () => ({ ok: true }) });
+  t.bg.MEDIA_TIMING.audioWait = 40;
+  t.L.headers(ranged("https://cdn.x.com/v/audio_128.mp4?bytestart=0&byteend=9", "audio/mp4", 5000000));
+  await wait(15);
+  assert.equal(shown(t).length, 0);
+  await wait(80);
+  const e = shown(t);
+  assert.equal(e.length, 1); assert.deepEqual([e[0].kind, e[0].media, e[0].url], ["file", "audio", "https://cdn.x.com/v/audio_128.mp4"]);
+  // Página nueva mientras espera: el audio era de la anterior.
+  t = loadBackground({ appConfig: CFG_MIN, hostReply: () => ({ ok: true }) });
+  t.bg.MEDIA_TIMING.audioWait = 40;
+  t.L.headers(ranged("https://cdn.x.com/v/audio_128.mp4?bytestart=0&byteend=9", "audio/mp4", 5000000));
+  await wait(15);
+  t.L.tabUpdated(4, { url: "https://videos.ejemplo.com/ver/456", status: "loading" }, { id: 4, url: "https://videos.ejemplo.com/ver/456" });
+  await wait(80);
+  assert.equal(shown(t).length, 0);
 });
 
 // ------------------------------------------------------------------ opción 3: integración con el navegador (1.4)

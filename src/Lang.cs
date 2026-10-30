@@ -145,6 +145,30 @@ namespace IDMClone
             _code = string.IsNullOrEmpty(code) ? null : code;
         }
 
+        // Una traducción de un archivo de idioma sin cargarlo (null si no la trae o no se puede leer).
+        public static string Lookup(string path, string key)
+        {
+            try
+            {
+                bool texts = false;
+                foreach (string raw in File.ReadLines(path, Encoding.UTF8))
+                {
+                    string line = raw.TrimEnd('\r');
+                    if (line.Length == 0 || line.StartsWith(";")) continue;
+                    if (line.StartsWith("[")) { texts = line.StartsWith("[Textos]", StringComparison.OrdinalIgnoreCase); continue; }
+                    if (!texts) continue;
+                    int eq = SplitAt(line);
+                    if (eq > 0 && Unescape(line.Substring(0, eq)) == key)
+                    {
+                        string value = Unescape(line.Substring(eq + 1));
+                        if (value.Length > 0) return value;
+                    }
+                }
+            }
+            catch (Exception) { }
+            return null;
+        }
+
         // Primer "=" sin escapar (\= dentro de un texto).
         static int SplitAt(string line)
         {

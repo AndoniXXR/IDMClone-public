@@ -89,7 +89,7 @@ namespace IDMClone.Tests
                 WaitEnd(it, 60);
                 AssertComplete(it, size);
                 Check(Path.GetPathRoot(it.FilePath).Equals(home, StringComparison.OrdinalIgnoreCase), "Destino inesperado: " + it.FilePath);
-                Check(!File.Exists(it.FilePath + ".idmclone-mover"), "Quedó el archivo provisional de la copia");
+                Check(Directory.GetFiles(Path.GetDirectoryName(it.FilePath), "*.idmclone-mover").Length == 0, "Quedó el archivo provisional de la copia");
                 Check(Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories).Length == 0, "Quedaron archivos en el temporal de la otra unidad");
             }
             finally { try { Directory.Delete(tempDir, true); } catch { } }

@@ -158,6 +158,25 @@ namespace IDMClone
             }
         }
 
+        // Tipos de pista ("vide", "soun") de una inicialización MP4 ya bajada (EXT-X-MAP): para saber si es solo audio.
+        public static List<string> Handlers(byte[] init)
+        {
+            List<string> r = new List<string>();
+            using (MemoryStream s = new MemoryStream(init, false))
+            {
+                Bmff.Box? moov = Bmff.Find(Bmff.List(s, 0, s.Length), "moov");
+                if (moov == null) return r;
+                foreach (Bmff.Box c in Bmff.Children(s, moov.Value))
+                {
+                    if (c.Type != "trak") continue;
+                    uint id; Bmff.Box stbl;
+                    MediaTrackData t = ReadTrak(s, c, out id, out stbl);
+                    if (t != null) r.Add(t.Handler);
+                }
+            }
+            return r;
+        }
+
         static MediaTrackData ReadTrak(Stream s, Bmff.Box trak, out uint id, out Bmff.Box stblOut)
         {
             id = 0; stblOut = new Bmff.Box();
