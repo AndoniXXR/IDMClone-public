@@ -21,6 +21,10 @@ namespace IDMClone.Tests
             Run("opción 3: cookies del navegador: GUI -> host -> extensión -> GUI (#18)", O3_CookieBridgeRoundTrip);
             Run("opción 3: cookies del navegador: varios navegadores, respuestas ajenas y tiempo agotado (#18)", O3_CookieBridgeLogic);
             Run("opción 3: cookies del navegador: solo habla con IDMClone (#18)", O3_CookieBridgeTrust);
+            Run("panel IDM: lista de serie igual que la de IDM 6.43 (orden, MP3 50 KB, OGG 100 KB, todos marcados, + opus y flac)", PI_DefaultTable);
+            Run("panel IDM: getconfig manda la lista de IDM y mínimos generales 0", PI_ConfigReply);
+            Run("panel IDM: config antigua 1024/300 sin lista pasa a la de IDM; lista o mínimos propios se conservan", PI_Upgrade);
+            Run("panel IDM: Opciones muestra MP3 50 KB, OGG 100 KB y los demás en blanco", PI_Dialog);
         }
 
         static Dictionary<string, object> O3_Json(string s) { return new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(s); }
@@ -114,7 +118,7 @@ namespace IDMClone.Tests
             Check(!d.MediaPanelProtected, "Archivos protegidos: desmarcado por defecto, como IDM");
             List<AppConfig.MediaTypeRule> def = AppConfig.ParseMediaTypes(d);
             Check(def.Count == AppConfig.MediaTypesOrder.Length && def.TrueForAll(delegate(AppConfig.MediaTypeRule x) { return x.On; }), "De serie: todos marcados");
-            Check(def[1].Ext == "mp3" && def[1].MinKB == d.MediaPanelMinAudioKB && def[2].MinKB == d.MediaPanelMinVideoKB, "Mínimos de serie");
+            Check(def[1].Ext == "mp3" && def[1].MinKB == 50 && def[2].Ext == "mp4" && def[2].MinKB == 0, "Mínimos de serie (los de IDM)");
             d.MediaPanelTypes = "flv mp3:50 -wmv .MKV mp3:9 -:4 bad:x";
             List<AppConfig.MediaTypeRule> l = AppConfig.ParseMediaTypes(d);
             Check(l.Count == 5, "Cuenta: " + l.Count);
@@ -266,6 +270,114 @@ namespace IDMClone.Tests
             Check(!CookieBridge.IsIdmCloneProcess(0) && !CookieBridge.IsIdmCloneProcess(999999), "pid inválido");
             Check(CookieBridge.PipeName.StartsWith(Ipc.PipeName) && CookieBridge.PipeName != Ipc.PipeName, "Tubería propia por usuario y sesión");
             Check(CookieBridge.ValidUrl("https://x.com/a?b=1") && !CookieBridge.ValidUrl("ftp://x.com/") && !CookieBridge.ValidUrl("https:///x") && !CookieBridge.ValidUrl(null), "ValidUrl");
+        }
+
+        // ---------------------------------------------------------------- panel IDM: lista "Para reproductores Web"
+
+        // La de IDM 6.43 medida en Opciones > General > Personalizar panel > Para reproductores Web (+ opus y flac de IDMClone).
+        static readonly string[] PI_Idm = { "flv", "mp3:50", "mp4", "m4a", "mpg", "mpeg", "avi", "wmv", "wma", "wav", "asf", "rm", "ogg:100", "mov", "ogv", "ts", "mkv", "aac",
+                                            "vtt", "ttml", "ttml2", "dfxp", "srt", "3gp", "qt", "webm", "m4v", "f4v", "opus", "flac" };
+
+        static void PI_CheckIdm(List<AppConfig.MediaTypeRule> l, string what)
+        {
+            CheckEq(string.Join(" ", PI_Idm), AppConfig.MediaTypesText(l), what);
+            Check(l.TrueForAll(delegate(AppConfig.MediaTypeRule x) { return x.On; }), what + ": todos marcados");
+        }
+
+        static void PI_DefaultTable()
+        {
+            AppConfig d = AppConfig.CreateDefault();
+            Check(d.MediaPanelTypes == null && d.MediaPanelMinVideoKB == 0 && d.MediaPanelMinAudioKB == 0, "Sin mínimos generales, como IDM");
+            PI_CheckIdm(AppConfig.ParseMediaTypes(d), "Lista de serie");
+            // Los mínimos de la lista no dependen de los generales.
+            d.MediaPanelMinVideoKB = 4096; d.MediaPanelMinAudioKB = 999;
+            PI_CheckIdm(AppConfig.ParseMediaTypes(d), "Con mínimos generales cambiados");
+            // Todos los tipos de serie tienen una clase, y solo una (subtítulos aparte).
+            foreach (string e in AppConfig.MediaTypesOrder)
+            {
+                int n = (AppConfig.IsMediaVideoType(e) ? 1 : 0) + (AppConfig.IsMediaAudioType(e) ? 1 : 0) + (AppConfig.IsMediaSubtitleType(e) ? 1 : 0);
+                Check(n == 1, "Clase de " + e + ": " + n);
+            }
+            Check(AppConfig.IsMediaVideoType("RM") && AppConfig.IsMediaVideoType("ogv") && AppConfig.IsMediaVideoType("qt") && AppConfig.IsMediaVideoType("f4v"), "Vídeo nuevos");
+            Check(AppConfig.IsMediaAudioType("wma") && AppConfig.IsMediaAudioType("ogg") && AppConfig.IsMediaAudioType("flac"), "Audio");
+            Check(AppConfig.IsMediaSubtitleType("vtt") && AppConfig.IsMediaSubtitleType("TTML2") && AppConfig.IsMediaSubtitleType("srt") && !AppConfig.IsMediaSubtitleType("mp4"), "Subtítulos");
+            // Un tipo agregado: el mínimo de IDM si es de serie; si no, el general de su clase.
+            Check(AppConfig.NewMediaTypeMinKB(d, "mp3") == 50 && AppConfig.NewMediaTypeMinKB(d, "mp4") == 0 && AppConfig.NewMediaTypeMinKB(d, "xyz") == 4096, "Mínimo de un tipo agregado");
+        }
+
+        static void PI_ConfigReply()
+        {
+            UseFreshHome("pi-config");
+            Cfg().Save();
+            Dictionary<string, object> d = O3_Json(NativeHost.ConfigReply());
+            Check((int)d["minVideoKB"] == 0 && (int)d["minAudioKB"] == 0, "Mínimos generales 0");
+            List<string> w = new List<string>();
+            foreach (object o in O3_List(d["mediaTypes"]))
+            {
+                Dictionary<string, object> t = (Dictionary<string, object>)o;
+                Check((bool)t["on"], "Marcado: " + t["ext"]);
+                w.Add((string)t["ext"] + ((int)t["minKB"] > 0 ? ":" + t["minKB"] : ""));
+            }
+            CheckEq(string.Join(" ", PI_Idm), string.Join(" ", w.ToArray()), "mediaTypes");
+            // Una configuración guardada con los mínimos de antes llega ya convertida.
+            File.WriteAllText(AppConfig.ConfigPath, "{\"MediaPanel\":true,\"MediaPanelMinVideoKB\":1024,\"MediaPanelMinAudioKB\":300,\"MediaPanelTypes\":null}");
+            d = O3_Json(NativeHost.ConfigReply());
+            Check((int)d["minVideoKB"] == 0 && (int)d["minAudioKB"] == 0 && O3_List(d["mediaTypes"]).Count == PI_Idm.Length, "Antigua por el host");
+        }
+
+        static void PI_Upgrade()
+        {
+            UseFreshHome("pi-upgrade");
+            // Nunca tocó la lista y tiene los de antes (1024/300): pasa a los de IDM, y se queda así al guardar.
+            File.WriteAllText(AppConfig.ConfigPath, "{\"MediaPanel\":true,\"MediaPanelMinVideoKB\":1024,\"MediaPanelMinAudioKB\":300,\"MediaPanelTypes\":null}");
+            AppConfig a = AppConfig.Load();
+            Check(a.MediaPanelTypes == null && a.MediaPanelMinVideoKB == 0 && a.MediaPanelMinAudioKB == 0, "1024/300 -> 0/0");
+            PI_CheckIdm(AppConfig.ParseMediaTypes(a), "Antigua");
+            a.Save();
+            AppConfig a2 = AppConfig.Load();
+            Check(a2.MediaPanelTypes == null && a2.MediaPanelMinVideoKB == 0 && a2.MediaPanelMinAudioKB == 0, "Guardada otra vez: igual");
+            // Muy antigua, sin las claves del panel.
+            File.WriteAllText(AppConfig.ConfigPath, "{\"MaxConnections\":8}");
+            AppConfig v = AppConfig.Load();
+            Check(v.MediaPanelTypes == null && v.MediaPanelMinVideoKB == 0 && v.MediaPanelMinAudioKB == 0, "Sin claves del panel");
+            // Lista personalizada: se conserva tal cual (y sus mínimos generales).
+            File.WriteAllText(AppConfig.ConfigPath, "{\"MediaPanel\":true,\"MediaPanelMinVideoKB\":1024,\"MediaPanelMinAudioKB\":300,\"MediaPanelTypes\":\"flv mp4:2048 -mp3\"}");
+            AppConfig p = AppConfig.Load();
+            Check(p.MediaPanelTypes == "flv mp4:2048 -mp3" && p.MediaPanelMinVideoKB == 1024 && p.MediaPanelMinAudioKB == 300, "Personalizada: " + p.MediaPanelTypes);
+            // Sin lista pero con mínimos generales propios: se guardan en la lista (cada tipo con el de su clase) y se conservan.
+            File.WriteAllText(AppConfig.ConfigPath, "{\"MediaPanel\":true,\"MediaPanelMinVideoKB\":2048,\"MediaPanelMinAudioKB\":300,\"MediaPanelTypes\":null}");
+            AppConfig g = AppConfig.Load();
+            Check(g.MediaPanelMinVideoKB == 2048 && g.MediaPanelMinAudioKB == 300 && g.MediaPanelTypes != null, "Mínimos propios");
+            List<AppConfig.MediaTypeRule> l = AppConfig.ParseMediaTypes(g);
+            Check(l.Count == PI_Idm.Length && l.TrueForAll(delegate(AppConfig.MediaTypeRule x) { return x.On; }), "Mínimos propios: lista de IDM");
+            foreach (AppConfig.MediaTypeRule x in l)
+            {
+                int want = AppConfig.IsMediaAudioType(x.Ext) ? 300 : AppConfig.IsMediaVideoType(x.Ext) ? 2048 : 0;
+                Check(x.MinKB == want, "Mínimo de " + x.Ext + ": " + x.MinKB);
+            }
+        }
+
+        static void PI_Dialog()
+        {
+            UseFreshHome("pi-dialog");
+            AppConfig c = Cfg();
+            using (MediaPanelForm f = new MediaPanelForm(c))
+            {
+                IntPtr h = f.Handle;
+                System.Windows.Forms.ListView lv = (System.Windows.Forms.ListView)typeof(MediaPanelForm)
+                    .GetField("_types", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(f);
+                Check(lv.Items.Count == PI_Idm.Length, "Filas: " + lv.Items.Count);
+                for (int i = 0; i < lv.Items.Count; i++)
+                {
+                    System.Windows.Forms.ListViewItem it = lv.Items[i];
+                    string ext = PI_Idm[i].Split(':')[0];
+                    string size = ext == "mp3" ? "50.00 KB" : ext == "ogg" ? "100.00 KB" : "";
+                    Check(it.Text == ext.ToUpperInvariant() && it.SubItems[1].Text == size && it.Checked, "Fila " + i + ": " + it.Text + " [" + it.SubItems[1].Text + "]");
+                }
+                f.Apply();
+            }
+            CheckEq(string.Join(" ", PI_Idm), c.MediaPanelTypes, "Aceptar guarda la lista de IDM");
+            Check(c.MediaPanelMinVideoKB == 0 && c.MediaPanelMinAudioKB == 0, "Aceptar: mínimos generales 0");
         }
     }
 }

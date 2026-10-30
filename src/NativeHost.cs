@@ -205,7 +205,7 @@ namespace IDMClone
             // Panel de descarga para reproductores web (Opciones > General).
             o["mediaPanel"] = c.MediaPanel; o["mediaMini"] = c.MediaPanelMini;
             o["mediaExclude"] = new List<string>((c.MediaPanelExcludeSites ?? "").Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
-            o["minVideoKB"] = c.MediaPanelMinVideoKB; o["minAudioKB"] = c.MediaPanelMinAudioKB;
+            o["minVideoKB"] = c.MediaPanelMinVideoKB; o["minAudioKB"] = c.MediaPanelMinAudioKB;   // generales: tipos fuera de "mediaTypes" (0 de serie, como IDM)
             // ---- Claves de la versión 1.4 (todas opcionales: una extensión antigua las ignora). Siempre DESPUÉS de "exts":
             // el registro reconoce esta respuesta por su comienzo.
             // #1 Capturar descargas para los siguientes navegadores: el navegador que llama y si está desmarcado.

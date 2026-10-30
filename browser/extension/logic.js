@@ -26,6 +26,10 @@
     "audio/ogg": "ogg", "audio/x-ms-wma": "wma", "audio/webm": "webm", "audio/x-m4a": "m4a", "audio/flac": "flac",
     "video/mp4": "mp4", "video/x-matroska": "mkv", "video/quicktime": "mov", "video/x-msvideo": "avi", "video/x-ms-wmv": "wmv",
     "video/mpeg": "mpg", "video/ogg": "ogv", "video/3gpp": "3gp", "video/webm": "webm", "video/x-flv": "flv",
+    // Resto de tipos de la lista del panel de IDM ("Para reproductores Web"): F4V, M4V, ASF, RM...
+    "video/x-f4v": "f4v", "video/f4v": "f4v", "video/x-m4v": "m4v", "video/x-ms-asf": "asf", "video/avi": "avi",
+    "application/vnd.rn-realmedia": "rm", "audio/x-aac": "aac", "audio/x-flac": "flac", "audio/opus": "opus",
+    "audio/wave": "wav", "audio/vnd.wave": "wav",
     "application/vnd.apple.mpegurl": "m3u8", "application/x-mpegurl": "m3u8", "application/dash+xml": "mpd",
     "text/html": "html"
   };
@@ -195,8 +199,12 @@
 
   // ---- Panel "Descargar este video" (como IDM) ----
   const HLS_MIME = ["application/vnd.apple.mpegurl", "application/x-mpegurl", "audio/mpegurl", "audio/x-mpegurl", "application/mpegurl"];
-  const MEDIA_EXTS = ["mp4", "m4v", "webm", "mov", "mkv", "flv", "ogv", "3gp", "mp3", "m4a", "oga", "ogg", "opus", "wav", "aac", "flac", "weba"];
-  const AUDIO_EXTS = ["mp3", "m4a", "oga", "ogg", "opus", "wav", "aac", "flac", "weba"];
+  // Los de la lista de IDM (menos TS, que son trozos de HLS) y algunos más que dan los navegadores.
+  const MEDIA_EXTS = ["mp4", "m4v", "webm", "mov", "qt", "mkv", "flv", "f4v", "ogv", "3gp", "avi", "wmv", "asf", "mpg", "mpeg", "rm",
+                      "mp3", "m4a", "oga", "ogg", "opus", "wav", "aac", "flac", "weba", "wma"];
+  const AUDIO_EXTS = ["mp3", "m4a", "oga", "ogg", "opus", "wav", "aac", "flac", "weba", "wma"];
+  // Tipos MIME de vídeo que no empiezan por "video/" (RealMedia).
+  const isAvMime = (ct) => /^(video|audio)\//.test(ct) || ct === "application/vnd.rn-realmedia";
 
   // ¿Es un vídeo o un audio que el panel puede ofrecer? Los trozos que piden los reproductores por
   // JavaScript (MSE: .ts, .m4s, fragmentos por XHR) no: se ofrece la lista HLS/DASH de la que salen.
@@ -214,14 +222,14 @@
     // se ofrece el archivo completo, sin los parámetros del trozo.
     const rangeInQuery = /[?&](bytestart|byteend|range)=/i.test(d.url);
     if ((d.type === "xmlhttprequest" || d.type === "other") && (d.statusCode === 206 || rangeInQuery)) {
-      const av = /^(video|audio)\//.test(ct) || (MEDIA_EXTS.indexOf(ext) >= 0 && (!ct || ct === "application/octet-stream"));
+      const av = isAvMime(ct) || (MEDIA_EXTS.indexOf(ext) >= 0 && (!ct || ct === "application/octet-stream"));
       if (!av) return null;
       const t = /\/(\d+)\s*$/.exec(String(d.contentRange || ""));
       const media = ct.indexOf("audio/") === 0 || AUDIO_EXTS.indexOf(ext) >= 0 || /[?&]mime=audio/i.test(d.url) ? "audio" : "video";
       return { kind: "file", media, size: t ? parseInt(t[1], 10) : -1, url: stripRange(d.url), ranged: true };
     }
     if (d.type !== "media" && d.type !== "object" && d.type !== "other") return null;
-    const isMedia = /^(video|audio)\//.test(ct) || (MEDIA_EXTS.indexOf(ext) >= 0 && (!ct || ct === "application/octet-stream"));
+    const isMedia = isAvMime(ct) || (MEDIA_EXTS.indexOf(ext) >= 0 && (!ct || ct === "application/octet-stream"));
     if (!isMedia) return null;
     let size = -1;
     const m = /\/(\d+)\s*$/.exec(String(d.contentRange || ""));
@@ -242,15 +250,17 @@
   }
 
   // Título de la página para el nombre del vídeo, como IDM: sin el contador "(3) " del principio ni el nombre del
-  // sitio del final (" - Sitio", " | Sitio") cuando coincide con el servidor ("Mi vídeo - Ejemplo" en ejemplo.com).
+  // sitio del final (" - Sitio", " | Sitio", " / X") cuando coincide con el servidor ("Mi vídeo - Ejemplo" en ejemplo.com).
+  // Un nombre de sitio corto (la "X" de x.com) solo cuenta si es igual al del servidor.
   function cleanTitle(title, host) {
     let t = String(title || "").replace(/^\s*\(\d+\+?\)\s*/, "").trim();
     const labels = String(host || "").toLowerCase().replace(/:\d+$/, "").split(".").slice(0, -1)
-      .filter((x) => x.length >= 3 && !/^(www|com|net|org|gob|gov|edu|mil|nom|int)$/.test(x)); // .com.mx, .gob.ar...
-    const m = /^(.*\S)\s+[-|–—·]\s+([^-|–—·]+)$/.exec(t);
+      .map((x) => x.replace(/[^a-z0-9]/g, ""))
+      .filter((x) => x && !/^(www|com|net|org|gob|gov|edu|mil|nom|int)$/.test(x)); // .com.mx, .gob.ar...
+    const m = /^(.*\S)\s+[-|–—·/]\s+([^-|–—·/]+)$/.exec(t);
     if (m && labels.length) {
       const site = m[2].toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (site.length >= 3 && labels.some((x) => { x = x.replace(/[^a-z0-9]/g, ""); return x.length >= 3 && site.indexOf(x) === 0; })) t = m[1];
+      if (site && labels.some((x) => site === x || (site.length >= 3 && x.length >= 3 && site.indexOf(x) === 0))) t = m[1];
     }
     return t;
   }
@@ -298,7 +308,7 @@
   // ---- Subtítulos del panel (como IDM: "Subtítulos: Español (vtt)", se guardan junto al vídeo) ----
   const SUB_MIME = { "text/vtt": "vtt", "application/x-subrip": "srt", "application/x-srt": "srt", "text/srt": "srt",
                      "application/ttml+xml": "ttml", "application/ttaf+xml": "ttml" };
-  const SUB_EXTS = ["vtt", "webvtt", "srt", "ttml", "dfxp"];
+  const SUB_EXTS = ["vtt", "webvtt", "srt", "ttml", "ttml2", "dfxp"];
   // Nombre de cada idioma: clave de _locales ("langEs" -> "Español" / "Spanish" / "西班牙语" / "スペイン語").
   const LANG_NAMES = { es: "langEs", en: "langEn", fr: "langFr", de: "langDe", it: "langIt", pt: "langPt", ca: "langCa",
     gl: "langGl", eu: "langEu", nl: "langNl", ru: "langRu", ja: "langJa", zh: "langZh", ko: "langKo", ar: "langAr",
@@ -315,7 +325,7 @@
     const ct = String(d.contentType || "").split(";")[0].trim().toLowerCase();
     const ext = extOf(urlPath(d.url) || d.url);
     let fmt = SUB_MIME[ct] || "";
-    if (!fmt && SUB_EXTS.indexOf(ext) >= 0 && (!ct || /^(text\/(plain|xml)|application\/(octet-stream|xml))$/.test(ct))) fmt = ext === "webvtt" ? "vtt" : ext === "dfxp" ? "ttml" : ext;
+    if (!fmt && SUB_EXTS.indexOf(ext) >= 0 && (!ct || /^(text\/(plain|xml)|application\/(octet-stream|xml))$/.test(ct))) fmt = ext === "webvtt" ? "vtt" : ext === "dfxp" || ext === "ttml2" ? "ttml" : ext;
     if (!fmt) return null;
     return { kind: "subtitle", format: fmt, ext: fmt === "ttml" ? ".srt" : "." + fmt, language: subtitleLang(d.url), url: String(d.url).split("#")[0] };
   }
@@ -328,7 +338,7 @@
         const v = u.searchParams.get(k);
         if (v && /^[a-z]{2,3}([-_][a-z0-9]{2,4})?$/i.test(v)) return v.replace("_", "-");
       }
-      const m = /[\/._-]([a-z]{2,3}(?:[-_][A-Za-z]{2,4})?)\.(?:vtt|webvtt|srt|ttml|dfxp|xml)$/i.exec(decodeURIComponent(u.pathname));
+      const m = /[\/._-]([a-z]{2,3}(?:[-_][A-Za-z]{2,4})?)\.(?:vtt|webvtt|srt|ttml2?|dfxp|xml)$/i.exec(decodeURIComponent(u.pathname));
       if (m && (LANG_NAMES[m[1].toLowerCase().split(/[-_]/)[0]])) return m[1].replace("_", "-");
     } catch (e) { }
     return "";
@@ -380,6 +390,23 @@
     if (rule && rule.on === false) return { show: false, off: true, small: false, minKB, known: true };
     const small = size > 0 && size < minKB * 1024;
     return { show: !small, off: false, small, minKB, known: !!rule };
+  }
+
+  // Subtítulos y su tipo en la lista del panel (VTT, SRT, TTML, TTML2, DFXP), como IDM: desmarcado, no se ofrecen.
+  // sub: { url (archivo suelto: manda su extensión), format ("vtt"|"srt"|"ttml": el del archivo de origen) }.
+  // Se busca primero el tipo de la extensión (.dfxp, .ttml2) y, si no está en la lista, el del formato. El tamaño
+  // mínimo no cuenta (los subtítulos son pequeños). Sin lista o sin tipo en ella: se ofrecen, como siempre.
+  const SUB_TYPES = { vtt: "vtt", webvtt: "vtt", srt: "srt", ttml: "ttml", ttml2: "ttml2", dfxp: "dfxp" };
+  function subtitleAllowed(sub, cfg) {
+    if (!sub || !cfg || !Array.isArray(cfg.mediaTypes)) return true;
+    const url = String(sub.url || "");
+    const cands = [SUB_TYPES[url ? extOf(urlPath(url) || url) : ""], SUB_TYPES[String(sub.format || "").toLowerCase().replace(/^\./, "")]];
+    for (const c of cands) {
+      if (!c) continue;
+      const rule = cfg.mediaTypes.find((t) => t && String(t.ext || "").toLowerCase() === c);
+      if (rule) return rule.on !== false;
+    }
+    return true;
   }
 
   // ---- Panel para los enlaces seleccionados (#11) ----
@@ -514,7 +541,7 @@
 
   const api = { DEFAULT_EXTS, DEFAULT_EXCLUDE, MIME_EXT, extOf, baseName, extMatches, urlExcluded, filenameFromContentDisposition, isCapturableScheme, decide,
                 classifyMedia, stripRange, cleanTitle, mediaFileName, formatSize, formatDuration, mediaLabel,
-                mediaExt, mediaTypeAllowed, selectionPanelAllowed, textUrls, sanitizeLinks, proxyFromInfo, proxyFromChromeSettings,
+                mediaExt, mediaTypeAllowed, subtitleAllowed, selectionPanelAllowed, textUrls, sanitizeLinks, proxyFromInfo, proxyFromChromeSettings,
                 decideForced, keysHeld, KEY_NAMES, t,
                 classifySubtitle, subtitleLang, languageName, subtitleLabel, subtitleFileName, newerVersion };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

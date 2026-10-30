@@ -126,7 +126,8 @@ function loadBackground(opts) {
     contextMenus: { removeAll: async () => { menus.removeAll++; menus.ids = []; }, create: (o, cb) => { menus.ids.push(o.id); menus.titles[o.id] = o.title; if (cb) cb(); }, onClicked: ev("menuClicked") },
     i18n: opts.i18n || I18N_ES,
     notifications: { create: (id, o) => calls.push(["notify", o.title, o.message]) },
-    webRequest: { onHeadersReceived: { addListener: (f) => { (L2.headersAll = L2.headersAll || []).push(f); L2.headers = (d) => { for (const x of L2.headersAll) x(d); }; } } },
+    webRequest: { onHeadersReceived: { addListener: (f) => { (L2.headersAll = L2.headersAll || []).push(f); L2.headers = (d) => { for (const x of L2.headersAll) x(d); }; } },
+                  onResponseStarted: { addListener: (f) => { L2.responseStarted = f; } } },
     tabs: {
       get: async (id) => Object.assign({ id, url: "https://videos.ejemplo.com/ver/123", title: "Mi vídeo: «prueba»", incognito: false }, opts.tab || {}),
       sendMessage: async (tabId, msg, o) => { calls.push(["tabMsg", tabId, msg, o]); },
@@ -1906,4 +1907,153 @@ test("tras /update: la recarga espera a que termine la captura en curso (no deja
   const names = t.calls.map((x) => x[0]);
   assert.ok(names.indexOf("cancel") >= 0 && names.indexOf("cancel") < names.indexOf("reload"), "Primero se termina la captura: " + names.join(","));
   await c;
+});
+
+// ------------------------------------------------------------------ tabla de tipos del panel de IDM 6.43 ("Para reproductores Web")
+
+// La lista por defecto de IDM, en su orden y toda marcada; solo MP3 (50 KB) y OGG (100 KB) tienen mínimo.
+const IDM_TYPES = ["flv", "mp3:50", "mp4", "m4a", "mpg", "mpeg", "avi", "wmv", "wma", "wav", "asf", "rm", "ogg:100", "mov", "ogv", "ts", "mkv",
+  "aac", "vtt", "ttml", "ttml2", "dfxp", "srt", "3gp", "qt", "webm", "m4v", "f4v", "opus", "flac"]
+  .map((x) => { const [ext, kb] = x.split(":"); return { ext, minKB: kb ? +kb : 0, on: true }; });
+const CFG_IDM = { ok: true, exts: ["zip"], mediaPanel: true, minVideoKB: 0, minAudioKB: 0, mediaTypes: IDM_TYPES };
+const idmWith = (changes) => Object.assign({}, CFG_IDM, { mediaTypes: IDM_TYPES.map((r) => (r.ext in changes ? Object.assign({}, r, changes[r.ext]) : r)) });
+function partial(url, ct, total) {
+  return hdr(url, "media", ct, { statusCode: 206, responseHeaders: [{ name: "content-type", value: ct }, { name: "content-range", value: "bytes 0-65535/" + total }] });
+}
+
+test("panel IDM: 'GIF' de X (MP4 pequeño en bucle) -> se ofrece como MP4 con el título de la página; con el mínimo antiguo de 1 MB, no", async () => {
+  const gif = "https://video.twimg.com/tweet_video/GxAbCdEfGhIjKlM.mp4";
+  let t = loadBackground({ appConfig: CFG_IDM, hostReply: () => ({ ok: true }) });
+  t.L.headers(partial(gif, "video/mp4", 991232)); // 968 KB
+  await wait(60);
+  const e = tabMsgs(t);
+  assert.equal(e.length, 1, JSON.stringify(e));
+  assert.deepEqual([e[0].kind, e[0].media, e[0].url, e[0].items[0].ext, e[0].items[0].size], ["file", "video", gif, ".mp4", 991232]);
+  assert.equal(L.mediaLabel(e[0].items[0]), "MP4  968 KB");
+  t.L.onMessage({ type: "media-download", entry: e[0], item: e[0].items[0] },
+    { tab: { id: 4, url: "https://x.com/ana/status/1", title: "(2) Ana en X: \"mi gato saltando\" / X" } }, () => {});
+  await wait(60);
+  assert.equal(t.posts("download")[0].filename, "Ana en X mi gato saltando.mp4");
+  // También uno de 150 KB.
+  t = loadBackground({ appConfig: CFG_IDM, hostReply: () => ({ ok: true }) });
+  t.L.headers(partial("https://video.twimg.com/tweet_video/Chico.mp4", "video/mp4", 153600));
+  await wait(60);
+  assert.equal(tabMsgs(t).length, 1);
+  // IDMClone antiguo (sin lista, mínimo general de 1 MB): oculto, como antes.
+  t = loadBackground({ appConfig: { ok: true, exts: ["zip"], mediaPanel: true, minVideoKB: 1024, minAudioKB: 300 }, hostReply: () => ({ ok: true }) });
+  t.L.headers(partial(gif, "video/mp4", 991232));
+  await wait(60);
+  assert.equal(tabMsgs(t).length, 0);
+});
+
+test("panel IDM: WebM de 541 KB -> se ofrece; MP3 de menos de 50 KB y OGG de menos de 100 KB, no", async () => {
+  const t = loadBackground({ appConfig: CFG_IDM, hostReply: () => ({ ok: true }) });
+  t.L.headers(big("https://a.com/media/clip.webm", "video/webm", 553984));
+  t.L.headers(big("https://a.com/media/click.mp3", "audio/mpeg", 40000));
+  t.L.headers(big("https://a.com/media/tono.ogg", "audio/ogg", 90000));
+  t.L.headers(big("https://a.com/media/cancion.mp3", "audio/mpeg", 60000));
+  t.L.headers(big("https://a.com/media/sonido.ogg", "audio/ogg", 120000));
+  await wait(80);
+  const e = tabMsgs(t);
+  assert.deepEqual(e.map((x) => x.url.split("/").pop() + ":" + x.media + ":" + x.items[0].ext).sort(),
+    ["cancion.mp3:audio:.mp3", "clip.webm:video:.webm", "sonido.ogg:audio:.ogg"]);
+});
+
+test("panel IDM: un vídeo servido desde la caché del navegador también se ofrece (una vez); los de la red, por onHeadersReceived", async () => {
+  const gif = "https://video.twimg.com/tweet_video/YaVisto.mp4";
+  const t = loadBackground({ appConfig: CFG_IDM, hostReply: () => ({ ok: true }) });
+  assert.equal(typeof t.L.responseStarted, "function", "Sin escucha de onResponseStarted");
+  // Desde la red: llega por onHeadersReceived; onResponseStarted (sin fromCache) no lo repite.
+  const net = partial("https://a.com/red.mp4", "video/mp4", 600000);
+  t.L.headers(net); t.L.responseStarted(net);
+  // Desde la caché: solo onResponseStarted, con fromCache.
+  t.L.responseStarted(Object.assign(big(gif, "video/mp4", 600000), { fromCache: true }));
+  await wait(80);
+  assert.deepEqual(tabMsgs(t).map((x) => x.url).sort(), ["https://a.com/red.mp4", gif]);
+});
+
+test("panel IDM: tipos nuevos de la lista (F4V, OGV, QT, RM...) se reconocen como vídeo o audio", () => {
+  const c = (url, ct) => { const m = L.classifyMedia({ url, type: "media", statusCode: 200, contentType: ct, contentLength: 5000000 }); return m && m.media + ":" + L.mediaExt(url, ct); };
+  assert.equal(c("https://a.com/v/clip.f4v", "video/mp4"), "video:f4v");
+  assert.equal(c("https://a.com/play?id=1", "video/x-f4v"), "video:f4v");
+  assert.equal(c("https://a.com/v/clip.ogv", "application/octet-stream"), "video:ogv");
+  assert.equal(c("https://a.com/v/clip.qt", "video/quicktime"), "video:qt");
+  assert.equal(c("https://a.com/v/clip.rm", "application/vnd.rn-realmedia"), "video:rm");
+  assert.equal(c("https://a.com/stream?id=2", "application/vnd.rn-realmedia"), "video:rm");
+  assert.equal(c("https://a.com/v/clip.asf", ""), "video:asf");
+  assert.equal(c("https://a.com/a/tema.wma", "application/octet-stream"), "audio:wma");
+  assert.equal(c("https://a.com/v/seg-1.ts", "video/mp2t"), null, "TS: trozos de HLS, no");
+  // Desmarcado en la lista: no se ofrece (y su mínimo cuenta cuando está marcado).
+  assert.equal(L.mediaTypeAllowed("f4v", 5000000, "video", idmWith({ f4v: { on: false } })).off, true);
+  assert.equal(L.mediaTypeAllowed("rm", 100, "video", CFG_IDM).show, true);
+  assert.equal(L.mediaTypeAllowed("ogg", 90000, "audio", CFG_IDM).small, true);
+});
+
+test("panel IDM: subtítulos de un tipo desmarcado (VTT, SRT, TTML...) no se ofrecen; marcados, sí", async () => {
+  const video = (url) => big(url, "video/mp4", 52428800);
+  // Sueltos: .vtt desmarcado, .srt marcado.
+  let t = loadBackground({ appConfig: idmWith({ vtt: { on: false } }), hostReply: () => ({ ok: true }) });
+  t.L.headers(video("https://a.com/peli.mp4"));
+  await wait(40);
+  t.L.headers(hdr("https://a.com/subs/peli.es.vtt", "other", "text/vtt"));
+  t.L.headers(hdr("https://a.com/subs/peli.en.srt", "other", "application/x-subrip"));
+  await wait(60);
+  assert.deepEqual(tabMsgs(t).map((x) => x.kind + ":" + (x.items[0].ext)), ["file:.mp4", "subs:.srt"]);
+  // Con todo marcado (la lista de IDM), los dos.
+  t = loadBackground({ appConfig: CFG_IDM, hostReply: () => ({ ok: true }) });
+  t.L.headers(video("https://a.com/peli.mp4"));
+  await wait(40);
+  t.L.headers(hdr("https://a.com/subs/peli.es.vtt", "other", "text/vtt"));
+  t.L.headers(hdr("https://a.com/subs/peli.en.srt", "other", "application/x-subrip"));
+  await wait(60);
+  assert.deepEqual(tabMsgs(t).map((x) => x.kind), ["file", "subs", "subs"]);
+  // Dentro de una lista HLS (WebVTT): con VTT desmarcado, solo las calidades.
+  t = loadBackground({ appConfig: idmWith({ vtt: { on: false } }), hostReply: (m) => (m.type === "probe" ? PROBE_SUBS : { ok: true }) });
+  t.L.headers(hdr("https://cdn.ejemplo.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  assert.deepEqual(tabMsgs(t)[0].items.map((i) => i.kind), ["video", "video"]);
+  // Aunque IDMClone los pase a SRT (".srt"): siguen siendo WebVTT.
+  const asSrt = Object.assign({}, PROBE_SUBS, { items: PROBE_SUBS.items.map((i) => (i.kind === "subtitle" ? Object.assign({}, i, { ext: ".srt" }) : i)) });
+  t = loadBackground({ appConfig: idmWith({ vtt: { on: false } }), hostReply: (m) => (m.type === "probe" ? asSrt : { ok: true }) });
+  t.L.headers(hdr("https://cdn.ejemplo.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  assert.deepEqual(tabMsgs(t)[0].items.map((i) => i.kind), ["video", "video"]);
+  // Marcado: las calidades y los subtítulos.
+  t = loadBackground({ appConfig: CFG_IDM, hostReply: (m) => (m.type === "probe" ? PROBE_SUBS : { ok: true }) });
+  t.L.headers(hdr("https://cdn.ejemplo.com/v/master.m3u8", "xmlhttprequest", "application/vnd.apple.mpegurl"));
+  await wait(60);
+  assert.deepEqual(tabMsgs(t)[0].items.map((i) => i.kind), ["video", "video", "subtitle", "subtitle"]);
+  // Reglas: la extensión manda (.dfxp, .ttml2) y si no está en la lista, el formato; el mínimo no cuenta.
+  const cfg = idmWith({ dfxp: { on: false }, ttml: { on: true, minKB: 500 } });
+  assert.equal(L.subtitleAllowed({ url: "https://a.com/s/es.dfxp", format: "ttml" }, cfg), false);
+  assert.equal(L.subtitleAllowed({ url: "https://a.com/s/es.ttml", format: "ttml" }, cfg), true);
+  assert.equal(L.subtitleAllowed({ url: "https://a.com/s/es.dfxp", format: "ttml" }, { mediaTypes: [{ ext: "ttml", minKB: 0, on: false }] }), false);
+  assert.equal(L.subtitleAllowed({ format: "vtt" }, { mediaTypes: [{ ext: "mp4", minKB: 0, on: true }] }), true, "Sin su tipo en la lista: se ofrecen");
+  assert.equal(L.subtitleAllowed({ format: "vtt" }, { minVideoKB: 1024 }), true, "IDMClone antiguo: como siempre");
+});
+
+test("panel IDM: <track> de un tipo desmarcado no sale en la lista del panel", async () => {
+  const v = fakeEl("video");
+  v.appendChild(fakeTrack({ kind: "subtitles", src: "https://v.com/t/es.vtt", srclang: "es", label: "Español" }));
+  v.appendChild(fakeTrack({ kind: "captions", src: "https://v.com/t/en.srt", srclang: "en", label: "" }));
+  v.appendChild(fakeTrack({ kind: "subtitles", src: "https://v.com/t/sub?id=3", srclang: "fr", label: "" })); // sin extensión: WebVTT
+  const c = loadContent({ mediaMini: false, mediaTypes: idmWith({ vtt: { on: false } }).mediaTypes }, undefined, [v]);
+  try {
+    await wait(10);
+    c.media({ url: "https://v.com/a.mp4", media: "video", items: [{ kind: "video", ext: ".mp4", size: 5000000 }] });
+    const root = c.created.find((e) => e.tagName === "IDMCLONE-PANEL")._root;
+    await wait(550);
+    fire(root.querySelector(".main"), "click", true);
+    const items = root.querySelector(".menu").querySelectorAll(".item").filter((b) => b.attrs.role === "menuitem");
+    assert.deepEqual(items.map((b) => b.children[0].textContent), ["MP4", "Subtítulos: Inglés (srt)"]);
+  } finally { c.stop(); }
+});
+
+test("panel IDM: título de X y Twitter (' / X') -> sin el nombre del sitio; otros ' / ' se quedan", () => {
+  assert.equal(L.cleanTitle("(2) Ana en X: \"mi gato saltando\" / X", "x.com"), "Ana en X: \"mi gato saltando\"");
+  assert.equal(L.cleanTitle("Ana en Twitter: \"hola\" / Twitter", "twitter.com"), "Ana en Twitter: \"hola\"");
+  assert.equal(L.cleanTitle("Ana en X: \"hola\" / X", "mobile.x.com"), "Ana en X: \"hola\"");
+  assert.equal(L.cleanTitle("Rock / Metal", "ejemplo.com"), "Rock / Metal");
+  assert.equal(L.cleanTitle("Mi clip - X", "ejemplo.com"), "Mi clip - X", "Una 'X' que no es el servidor");
+  assert.equal(L.cleanTitle("Mi vídeo - Ejemplo", "www.ejemplo.com"), "Mi vídeo");
 });

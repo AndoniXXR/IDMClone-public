@@ -765,10 +765,10 @@ namespace IDMClone.Tests
             c.Save();
             string json = NativeHost.ConfigReply();
             Check(json.Contains("\"mediaPanel\":true") && json.Contains("\"mediaMini\":true") && json.Contains("\"minVideoKB\":2048") && json.Contains("\"*.ejemplo.com\""), "getconfig: " + json);
-            // Una configuración antigua (sin estas claves) recibe los valores de IDM.
+            // Una configuración antigua (sin estas claves) recibe los valores de IDM (sin mínimo general; la lista de IDM).
             File.WriteAllText(AppConfig.ConfigPath, "{\"MaxConnections\":8}");
             AppConfig old = AppConfig.Load();
-            Check(old.MediaPanel && old.MergeAudioVideo && old.MediaPanelMinVideoKB == 1024, "Config antigua");
+            Check(old.MediaPanel && old.MergeAudioVideo && old.MediaPanelMinVideoKB == 0 && old.MediaPanelMinAudioKB == 0 && old.MediaPanelTypes == null, "Config antigua");
         }
     }
 }

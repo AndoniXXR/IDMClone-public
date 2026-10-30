@@ -202,7 +202,7 @@ namespace IDMClone
                 if (e.Length == 0 || e.IndexOfAny(new char[] { ':', '-', '/', '\\' }) >= 0) return;
                 ListViewItem old = Find(e);
                 if (old != null) { old.Checked = true; old.Selected = true; old.EnsureVisible(); return; }
-                AddRow(e, AppConfig.IsMediaAudioType(e) ? _cfg.MediaPanelMinAudioKB : _cfg.MediaPanelMinVideoKB, true);
+                AddRow(e, AppConfig.NewMediaTypeMinKB(_cfg, e), true);   // de serie: el mínimo de IDM; si no, el general
                 ListViewItem n = _types.Items[_types.Items.Count - 1]; n.Selected = true; n.EnsureVisible();
             }
         }
@@ -219,11 +219,17 @@ namespace IDMClone
 
         // ------------------------------------------------------------------ guardar
 
-        // Para las pruebas: mostrar, modo mini, mínimos de vídeo y audio (en todos los tipos), sitios excluidos y mezcla.
+        // Para las pruebas: mostrar, modo mini, mínimos de vídeo y audio (en todos los tipos de su clase; los subtítulos
+        // y los desconocidos no cambian), sitios excluidos y mezcla.
         public void Set(bool show, bool mini, int minVideoKB, int minAudioKB, string exclude, bool merge)
         {
             _show = show; _mini.Checked = mini; _full.Checked = !mini;
-            foreach (ListViewItem i in _types.Items) SetMin(i, AppConfig.IsMediaAudioType(((TypeRow)i.Tag).Ext) ? minAudioKB : minVideoKB);
+            foreach (ListViewItem i in _types.Items)
+            {
+                string e = ((TypeRow)i.Tag).Ext;
+                if (AppConfig.IsMediaAudioType(e)) SetMin(i, minAudioKB);
+                else if (AppConfig.IsMediaVideoType(e)) SetMin(i, minVideoKB);
+            }
             _exclude = exclude; _merge.Checked = merge;
         }
 
@@ -231,8 +237,9 @@ namespace IDMClone
         {
             _cfg.MediaPanel = _show;
             _cfg.MediaPanelMini = _mini.Checked;
-            // La extensión usa un mínimo para vídeo y otro para audio: el menor de los tipos marcados de cada clase
-            // (así ningún tipo marcado se queda sin panel). La lista completa se guarda en MediaPanelTypes.
+            // La lista completa (cada tipo con su mínimo) se guarda en MediaPanelTypes. Los mínimos generales (para los
+            // tipos que no están en la lista y las extensiones 1.3, que solo conocen esos dos) son el menor de los tipos
+            // marcados de cada clase, así ningún tipo marcado se queda sin panel; con la lista de IDM, 0 y 0.
             int video = -1, audio = -1;
             List<string> list = new List<string>();
             foreach (ListViewItem i in _types.Items)

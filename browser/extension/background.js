@@ -443,7 +443,10 @@ async function detectMedia(details) {
     // #10: contenido protegido (DRM) con "Mostrar el panel para los archivos protegidos" desmarcada (como IDM).
     if (r.protected && cfg.mediaProtected === false) { hiddenList(); return; }
     // Subtítulos de la lista: van después de las calidades (no cuentan para los tipos del panel ni se ofrecen solos).
-    const subItems = r.items.filter((i) => i.kind === "subtitle");
+    // Los de un tipo desmarcado en la lista del panel (VTT, TTML...), no, como IDM. El formato de origen: el que diga
+    // IDMClone; si no, los de HLS siempre son WebVTT, y en DASH ".srt" son TTML pasados a SRT.
+    const subFormat = (i) => i.format || (r.kind === "hls" || String(i.ext || "").toLowerCase() === ".vtt" ? "vtt" : "ttml");
+    const subItems = r.items.filter((i) => i.kind === "subtitle" && L.subtitleAllowed({ format: subFormat(i) }, cfg));
     const avItems = r.items.filter((i) => i.kind !== "subtitle");
     // #8: solo las calidades de un tipo marcado (por la extensión del archivo que sale: .mp4, .m4a, .webm...).
     let items = avItems;
@@ -499,6 +502,7 @@ async function detectSubtitle(details, sub) {
   try { tab = await B.tabs.get(details.tabId); } catch (e) { }
   const page = (tab && tab.url) || details.documentUrl || details.initiator || "";
   if (cfg.captureOff || cfg.mediaPanel === false || (cfg.mediaExclude && L.urlExcluded(page, cfg.mediaExclude)) || st.streaming) return;
+  if (!L.subtitleAllowed(sub, cfg)) return; // su tipo (VTT, SRT, TTML...) está desmarcado en la lista del panel
   const entry = { id: mediaSeq++, kind: "subs", url: sub.url, media: "subtitle", hidden: true,
                   items: [{ kind: "subtitle", ext: sub.ext, language: sub.language, url: sub.url }] };
   st.items.set(sub.url, entry);
@@ -521,6 +525,14 @@ if (B.webRequest && B.webRequest.onHeadersReceived) {
     B.webRequest.onHeadersReceived.addListener((d) => { detectMedia(d).catch(() => {}); },
       { urls: ["<all_urls>"], types: ["sub_frame", "other", "xmlhttprequest", "media", "object"] }, ["responseHeaders"]);
   } catch (e) { console.warn("IDMClone: sin detección de vídeo", e); }
+}
+// Lo que el navegador sirve desde su caché no pasa por onHeadersReceived: un vídeo ya visto (un "GIF" de X al volver a
+// la publicación) se quedaba sin panel, e IDM sí lo ofrece. Solo las de la caché: las demás ya llegaron por arriba.
+if (B.webRequest && B.webRequest.onResponseStarted) {
+  try {
+    B.webRequest.onResponseStarted.addListener((d) => { if (d.fromCache) detectMedia(d).catch(() => {}); },
+      { urls: ["<all_urls>"], types: ["sub_frame", "other", "xmlhttprequest", "media", "object"] }, ["responseHeaders"]);
+  } catch (e) { }
 }
 if (B.tabs && B.tabs.onUpdated) {
   B.tabs.onUpdated.addListener((tabId, info, tab) => {

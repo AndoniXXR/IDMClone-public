@@ -205,7 +205,9 @@ namespace IDMClone
         public bool MediaPanel { get; set; }              // mostrar "Descargar este video" sobre los vídeos
         public bool MediaPanelMini { get; set; }          // "Modo mini" en vez de "Modo completo"
         public string MediaPanelExcludeSites { get; set; } // "No mostrar el panel de descarga de IDM de los siguientes sitios"
-        public int MediaPanelMinVideoKB { get; set; }     // no mostrarlo para vídeos más pequeños (si se sabe el tamaño)
+        // Mínimos generales (si se sabe el tamaño), solo para los tipos que no están en la lista MediaPanelTypes;
+        // los de la lista usan el suyo. 0 por defecto: IDM no tiene mínimo general.
+        public int MediaPanelMinVideoKB { get; set; }
         public int MediaPanelMinAudioKB { get; set; }
         public bool MergeAudioVideo { get; set; }         // "Mezclar secuencias de audio y vídeo en un solo archivo"
         public string Language { get; set; }              // Ver > Idioma (null = español)
@@ -341,7 +343,7 @@ namespace IDMClone
             c.ToolbarLarge = true;
             c.ToolbarStyle = "neon"; // como IDM: botones de neón por defecto
             c.MediaPanel = true; c.MergeAudioVideo = true;
-            c.MediaPanelMinVideoKB = 1024; c.MediaPanelMinAudioKB = 300;
+            c.MediaPanelMinVideoKB = 0; c.MediaPanelMinAudioKB = 0;   // como IDM: sin mínimo general (ver ConfigMedia.cs)
             c.MediaPanelExcludeSites = "";
             return c;
         }
@@ -515,8 +517,10 @@ namespace IDMClone
             if (rawJson.IndexOf("\"MediaPanel\"", StringComparison.Ordinal) < 0)
             {
                 loaded.MediaPanel = true; loaded.MergeAudioVideo = true;
-                loaded.MediaPanelMinVideoKB = 1024; loaded.MediaPanelMinAudioKB = 300;
+                loaded.MediaPanelMinVideoKB = 0; loaded.MediaPanelMinAudioKB = 0;
             }
+            // Lista de tipos del panel de IDM (con 1024/300 de antes y sin lista propia, pasa a la de IDM).
+            UpgradeMediaTypes(loaded);
             // Proxy por protocolo y "Proxy DNS" (nuevos): una configuración de antes sigue funcionando igual que antes.
             // Antes el SOCKS mandaba siempre el nombre al servidor (como Proxy DNS marcado), el FTP iba directo y, con
             // SOCKS activo, todo iba por el SOCKS aunque hubiera un proxy HTTP escrito.

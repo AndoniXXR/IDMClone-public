@@ -88,10 +88,14 @@
   if (!L) return;
   const t = L.t;
   const entries = [];
-  let host = null, root = null, closed = false, mini = false, timer = 0;
+  let host = null, root = null, closed = false, mini = false, timer = 0, types = null;
 
   try {
-    Promise.resolve(B.storage.local.get({ appCfg: null })).then((s) => { mini = !!(s && s.appCfg && s.appCfg.mediaMini); if (host) render(); }).catch(() => {});
+    Promise.resolve(B.storage.local.get({ appCfg: null })).then((s) => {
+      mini = !!(s && s.appCfg && s.appCfg.mediaMini);
+      types = s && s.appCfg && Array.isArray(s.appCfg.mediaTypes) ? s.appCfg.mediaTypes : null; // tipos del panel (VTT, SRT...)
+      if (host) render();
+    }).catch(() => {});
   } catch (e) { }
 
   B.runtime.onMessage.addListener((msg) => {
@@ -222,6 +226,8 @@
         const src = String(tk.src || "").split("#")[0];
         if ((kind !== "subtitles" && kind !== "captions") || !/^https?:\/\//i.test(src) || seen.has(src) || out.length >= 20) continue;
         seen.add(src);
+        // Tipo desmarcado en la lista del panel (como IDM). Un <track> sin extensión conocida es WebVTT (el único que lee el navegador).
+        if (!L.subtitleAllowed({ url: src, format: "vtt" }, { mediaTypes: types })) continue;
         const ext = /\.(srt|ttml|dfxp)(?:[?]|$)/i.test(src) ? ".srt" : ".vtt"; // TTML: IDMClone lo pasa a SRT
         out.push({ entry: { kind: "subs", url: src, media: "subtitle" },
                    item: { kind: "subtitle", ext, url: src, language: String(tk.srclang || "").substring(0, 12), name: String(tk.label || "").substring(0, 60) } });
