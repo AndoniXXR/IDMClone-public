@@ -734,9 +734,9 @@ function big(url, ct, size) {
 }
 const tabMsgs = (t) => t.calls.filter((c) => c[0] === "tabMsg" && c[2].type === "idm-media").map((c) => c[2].entry);
 
-test("opción 3: manifiesto 1.6 sin permisos nuevos", () => {
+test("opción 3: manifiesto 1.7 sin permisos nuevos", () => {
   const m = require(path.join(EXT, "manifest.json"));
-  assert.equal(m.version, "1.6");
+  assert.equal(m.version, "1.7");
   assert.ok(!m.permissions.includes("management"), "management.getSelf no necesita el permiso");
   assert.ok(!m.permissions.includes("proxy"), "El permiso proxy no se pide (ver nota de #17)");
 });
@@ -1884,7 +1884,7 @@ test("tras /update: la extensión desempaquetada vieja se recarga sola, una vez 
 });
 
 test("tras /update: no se recarga si es igual, más vieja, de una tienda o sin el dato (IDMClone antiguo)", async () => {
-  const same = loadBackground({ appConfig: Object.assign({}, CFG14, { extVersion: "1.6" }), installType: "development" });
+  const same = loadBackground({ appConfig: Object.assign({}, CFG14, { extVersion: "1.7" }), installType: "development" });
   await same.bg.getAppConfig(); await wait(20);
   const store = loadBackground({ appConfig: Object.assign({}, CFG14, { extVersion: "9.0" }), installType: "normal" });
   await store.bg.getAppConfig(); await wait(20);
