@@ -345,5 +345,9 @@
   },
   "langVi": {
     "message": "ベトナム語"
+  },
+  "panelYtUpdate": {
+    "message": "YouTube からダウンロードするには IDMClone 1.5 以降が必要です（ヘルプ > 更新の確認）。",
+    "description": "Panel de vídeo en YouTube con un IDMClone sin motor de YouTube"
   }
 }

@@ -40,6 +40,16 @@ function Without($obj, [string[]]$names) {
   return $copy
 }
 
+# Las tiendas no aceptan extensiones que descargan de YouTube (IDM lo hace con su programa): sus paquetes van sin esa
+# parte. bg/youtube.js queda vacío (el fondo lo sigue cargando) y el script de página no se pone en youtube.com.
+$NoYouTube = "// Sin YouTube en el paquete de las tiendas (browser\package.ps1).`n"
+function WithoutYouTube($m) {
+  foreach ($cs in @($m.content_scripts)) {
+    if ($cs.world -eq "MAIN") { $cs.matches = @($cs.matches | Where-Object { $_ -notmatch "youtube" }) }
+  }
+  return $m
+}
+
 function Pack($name, $m) {
   $zipPath = Join-Path $Out ("idmclone-" + $name + "-" + $version + ".zip")
   if (Test-Path $zipPath) { Remove-Item $zipPath }
@@ -52,7 +62,13 @@ function Pack($name, $m) {
     try { $w.Write($json) } finally { $w.Dispose() }
     Get-ChildItem $ext -Recurse -File | Where-Object { $_.Name -ne "manifest.json" } | ForEach-Object {
       $rel = $_.FullName.Substring($ext.Length + 1) -replace '\\', '/'
-      [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $rel, "Optimal") | Out-Null
+      if ($rel -eq "bg/youtube.js") {
+        $e2 = $zip.CreateEntry($rel, "Optimal")
+        $w2 = New-Object System.IO.StreamWriter($e2.Open(), (New-Object System.Text.UTF8Encoding $false))
+        try { $w2.Write($NoYouTube) } finally { $w2.Dispose() }
+      } else {
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $rel, "Optimal") | Out-Null
+      }
     }
   } finally { $zip.Dispose() }
   Write-Host ("OK -> " + $zipPath)
@@ -60,9 +76,9 @@ function Pack($name, $m) {
 
 $chromium = Without $manifest @("key", "background.scripts", "browser_specific_settings")
 $chromium.permissions = @($chromium.permissions | Where-Object { $_ -ne "webRequestBlocking" })
-Pack "chromium" $chromium
+Pack "chromium" (WithoutYouTube $chromium)
 
 $firefox = Without $manifest @("key", "background.service_worker", "minimum_chrome_version")
 # addons.mozilla.org pide declarar qué datos se envían al desarrollador: ninguno (todo va a IDMClone, en el mismo equipo).
 $firefox.browser_specific_settings.gecko | Add-Member -NotePropertyName data_collection_permissions -NotePropertyValue ([ordered]@{ required = @("none") }) -Force
-Pack "firefox" $firefox
+Pack "firefox" (WithoutYouTube $firefox)

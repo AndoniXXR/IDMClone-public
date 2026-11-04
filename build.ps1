@@ -17,10 +17,14 @@ $manifest = Join-Path $root "app.manifest"
 $icon = Join-Path $root "app.ico"
 if (-not (Test-Path $icon)) { & (Join-Path $root "tools\make-icon.ps1") }
 
+# Motor de YouTube: Jint y el descifrador ejs de lib\, comprimidos dentro del exe (sigue siendo un solo archivo).
+. (Join-Path $root "lib\youtube-libs.ps1")
+$yt = YouTubeLibArgs $root $fw
+
 $cmd = @(
   "/nologo","/target:winexe","/platform:anycpu","/optimize+","/langversion:5",
   "/out:`"$out`"","/win32manifest:`"$manifest`"","/win32icon:`"$icon`"","/resource:`"$icon`",IDMClone.app.ico"
-) + $refs + $src
+) + $refs + $yt + $src
 
 Write-Host "Compilando IDMClone..." -ForegroundColor Cyan
 & $csc @cmd

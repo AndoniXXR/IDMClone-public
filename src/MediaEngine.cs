@@ -82,6 +82,7 @@ namespace IDMClone
             RunMediaWorkers(jobs, host);
 
             if (_stop) { MediaPaused(); return; }
+            if (YouTubeRetryAfter403()) { RunMedia(); return; } // YouTube: direcciones caducadas -> se piden otra vez (YouTubeDownload.cs)
             if (_fatal != null) { _item.Error = _fatal; _item.Status = DownloadStatus.Error; _item.SaveState(); return; }
             int missing = 0; foreach (MediaJob j in jobs) if (!j.Done) missing++;
             if (missing > 0)
@@ -299,6 +300,8 @@ namespace IDMClone
 
         void ResolveMedia(out MediaManifest man, out MediaTrack v, out MediaTrack a)
         {
+            // YouTube: direcciones nuevas de los formatos elegidos (YouTubeDownload.cs); luego se baja como un "pair".
+            if (_item.MediaKind == YouTube.Kind) { ResolveYouTube(out man, out v, out a); return; }
             // Vídeo y audio en archivos aparte que el reproductor pide a trozos (como Facebook o Instagram).
             if (_item.MediaKind == "pair")
             {

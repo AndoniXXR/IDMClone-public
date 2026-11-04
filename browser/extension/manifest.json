@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.7",
+  "version": "2.0",
   "description": "__MSG_extDesc__",
   "default_locale": "es",
   "minimum_chrome_version": "121",
@@ -30,7 +30,25 @@
   "background": {
     "service_worker": "background.js",
     "scripts": [
-      "logic.js",
+      "lib/util.js",
+      "lib/i18n.js",
+      "lib/decide.js",
+      "lib/media.js",
+      "lib/subtitles.js",
+      "lib/links.js",
+      "lib/sites.js",
+      "bg/core.js",
+      "bg/host.js",
+      "bg/config.js",
+      "bg/cookies.js",
+      "bg/capture.js",
+      "bg/menus.js",
+      "bg/links.js",
+      "bg/media-store.js",
+      "bg/media-net.js",
+      "bg/sites.js",
+      "bg/youtube.js",
+      "bg/main.js",
       "background.js"
     ]
   },
@@ -54,11 +72,38 @@
         "<all_urls>"
       ],
       "js": [
-        "logic.js",
-        "content.js"
+        "lib/util.js",
+        "lib/i18n.js",
+        "lib/media.js",
+        "lib/subtitles.js",
+        "lib/links.js",
+        "lib/sites.js",
+        "content/ui.js",
+        "content/keys.js",
+        "content/selection-panel.js",
+        "content/tracker.js",
+        "content/video-panel.js",
+        "content/bridge.js"
       ],
       "run_at": "document_start",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "*://*.x.com/*",
+        "*://*.twitter.com/*",
+        "*://*.facebook.com/*",
+        "*://*.instagram.com/*",
+        "*://*.vimeo.com/*",
+        "*://*.youtube.com/*",
+        "*://*.youtube-nocookie.com/*"
+      ],
+      "js": [
+        "page/hooks.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
     }
   ]
 }

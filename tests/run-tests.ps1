@@ -16,6 +16,9 @@ $refs = @(
   "System.IO.Compression.dll","System.IO.Compression.FileSystem.dll"
 ) | ForEach-Object { "/reference:`"" + (Join-Path $fw $_) + "`"" }
 
+# Motor de YouTube: las mismas DLL y el descifrador ejs dentro del exe de pruebas (los carga src\YouTubeLibs.cs).
+. (Join-Path $root "lib\youtube-libs.ps1")
+$refs += YouTubeLibArgs $root $fw
 $src  = Get-ChildItem (Join-Path $root "src") -Filter *.cs | ForEach-Object { "`"" + $_.FullName + "`"" }
 $src += Get-ChildItem (Join-Path $root "setup") -Filter *.cs | ForEach-Object { "`"" + $_.FullName + "`"" }
 $src += Get-ChildItem $tests -Filter *.cs | ForEach-Object { "`"" + $_.FullName + "`"" }

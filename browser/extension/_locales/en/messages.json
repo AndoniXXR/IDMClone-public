@@ -345,5 +345,9 @@
   },
   "langVi": {
     "message": "Vietnamese"
+  },
+  "panelYtUpdate": {
+    "message": "Downloading from YouTube needs IDMClone 1.5 or later (Help > Check for updates).",
+    "description": "Panel de vídeo en YouTube con un IDMClone sin motor de YouTube"
   }
 }

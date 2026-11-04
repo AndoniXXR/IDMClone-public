@@ -2348,11 +2348,18 @@ namespace IDMClone
             if (NativeHost.ValidBrowserProxy(bp)) o.BrowserProxy = bp;
             // Panel "Descargar este video": lista HLS/DASH y la calidad elegida (o los subtítulos: "subs").
             string mk = Get(d, "mediaKind");
-            if (mk == "hls" || mk == "dash" || mk == "pair" || mk == DownloadEngine.SubtitleKind)
+            if (mk == "hls" || mk == "dash" || mk == "pair" || mk == DownloadEngine.SubtitleKind || mk == YouTube.Kind)
             {
                 o.MediaKind = mk;
                 o.MediaVideo = Get(d, "mediaVideo").Length > 0 ? Get(d, "mediaVideo") : null;
                 o.MediaAudio = Get(d, "mediaAudio").Length > 0 ? Get(d, "mediaAudio") : null;
+            }
+            // YouTube (extensión 2.0): la página del vídeo y los formatos elegidos; las direcciones se piden al descargar.
+            if (mk == YouTube.Kind)
+            {
+                string err = YouTubeDownloadOptions(o);
+                if (err != null) return Ipc.ErrorJson(err);
+                url = o.Url; name = o.FileName;
             }
             if (o.Cookies.Length == 0) o.Cookies = null;
             if (o.Referrer.Length == 0) o.Referrer = null;
@@ -2380,6 +2387,21 @@ namespace IDMClone
         }
 
         static string Get(Dictionary<string, object> d, string k) { object v; return d.TryGetValue(k, out v) && v != null ? v.ToString() : ""; }
+
+        // "download" con "mediaKind":"youtube": dirección normalizada (https://www.youtube.com/watch?v=<id>), formatos
+        // válidos y un nombre si la extensión no lo mandó. Devuelve el error para la extensión, o null.
+        internal static string YouTubeDownloadOptions(AddOptions o)
+        {
+            string id;
+            if (!YouTube.TryVideoId(o.Url, out id)) return "La dirección del vídeo de YouTube no es válida.";
+            o.Url = YouTube.WatchUrl(id);
+            System.Text.RegularExpressions.Regex key = new System.Text.RegularExpressions.Regex("^(?:[0-9]{1,4}(:[0-9A-Za-z._-]{1,40})?|hls-[0-9]{1,3})$"); // itag[:pista] o calidad de un directo (YouTube.LiveKey)
+            if (o.MediaVideo != null && !key.IsMatch(o.MediaVideo)) return "Formato de vídeo de YouTube no válido.";
+            if (o.MediaAudio != null && o.MediaAudio != "-" && !key.IsMatch(o.MediaAudio)) return "Formato de audio de YouTube no válido.";
+            if (o.MediaVideo == null && (o.MediaAudio == null || o.MediaAudio == "-")) return "Falta el formato del vídeo de YouTube.";
+            if (string.IsNullOrEmpty(o.FileName)) o.FileName = "YouTube " + id + (o.MediaVideo == null ? ".m4a" : ".mp4");
+            return null;
+        }
 
         // {"links":[{"url":..,"text":..}], "referrer":.., "userAgent":.., "cookies":{"servidor":"a=1; b=2"}}
         static List<LinkEntry> LinksFromJson(Dictionary<string, object> d)

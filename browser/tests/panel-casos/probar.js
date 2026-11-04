@@ -36,6 +36,11 @@ const CASOS = {
   "gif-x": [V("video")],
   "mp3": ["audio: audio"],
   "subtitulos": [V("video"), "subtitle: subtítulos"],
+  // 2.0: panels = paneles que deben verse en la página (uno por vídeo en pantalla); then = algo que hace la página después.
+  "x-spa": { want: [V("1280x720", "640x360", "480x270", "audio")], panels: 1 },
+  "x-timeline": { want: [V("video"), V("video"), V("video")], panels: 1,
+                  then: { js: "scrollTo(0, document.getElementById('v2').getBoundingClientRect().top + scrollY - 100)", wait: 800, panels: 1 } },
+  "x-recrea": { want: [V("video")], panels: 1, wait: 3000 },
   "real": { want: null, wait: 9000 },
 };
 
@@ -88,9 +93,25 @@ function describe(entry) {
     let pass;
     if (spec.want === null) pass = got.some((g) => g.startsWith("video:"));
     else pass = JSON.stringify(got.slice().sort()) === JSON.stringify(spec.want.slice().sort()) && (spec.flash || removed === 0);
+    // Paneles en la página (los ocultos se quitan del DOM): uno por vídeo en pantalla.
+    const pageEval = async (expr) => (await c.send("Runtime.evaluate", { expression: expr, returnByValue: true }, s)).result.value;
+    const panelCount = () => pageEval("document.querySelectorAll('idmclone-panel').length");
+    let panelNote = "";
+    if (typeof spec.panels === "number") {
+      const n = await panelCount();
+      panelNote += "   [paneles: " + n + "]";
+      if (n !== spec.panels) pass = false;
+    }
+    if (spec.then) {
+      await pageEval(spec.then.js);
+      await sleep(spec.then.wait || 800);
+      const n = await panelCount();
+      panelNote += " [tras " + spec.then.js.substring(0, 30) + "...: " + n + "]";
+      if (typeof spec.then.panels === "number" && n !== spec.then.panels) pass = false;
+    }
     pass ? ok++ : bad++;
     console.log((pass ? "OK    " : "FALLA ") + id.padEnd(20) + " -> " + (got.length ? got.join(" | ") : "(nada)") +
-      (removed ? "   [quitado " + removed + " por el camino]" : "") +
+      (removed ? "   [quitado " + removed + " por el camino]" : "") + panelNote +
       (pass ? "" : "\n        esperado: " + (spec.want === null ? "algún vídeo" : spec.want.length ? spec.want.join(" | ") : "(nada)") +
                    "\n        mensajes: " + log.map((m) => m.type === "idm-media" ? "+" + describe(m.entry) : "-quitar").join(", ")));
     await c.send("Target.closeTarget", { targetId });

@@ -680,7 +680,7 @@ namespace IDMClone
             switch (_item.Status)
             {
                 case DownloadStatus.Downloading: return "Recibiendo datos...";
-                case DownloadStatus.Connecting: return "Conectando...";
+                case DownloadStatus.Connecting: { DownloadEngine e = _item.Engine; string note = e != null ? e.StatusNote : null; return note ?? "Conectando..."; } // YouTube: "Preparando YouTube..."
                 case DownloadStatus.Complete: return "Completo.";
                 case DownloadStatus.Error: return "Error: " + (_item.Error ?? "");
                 case DownloadStatus.Paused: return "Detenida";

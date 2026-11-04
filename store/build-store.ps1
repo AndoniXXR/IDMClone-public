@@ -18,6 +18,9 @@ const fs = require('fs'); const p = process.argv[1];
 const m = JSON.parse(fs.readFileSync(p, 'utf8'));
 delete m.key; delete m.browser_specific_settings;
 if (m.background) delete m.background.scripts;
+// Sin YouTube (las tiendas no lo aceptan): el script de página no va en youtube.com y bg/youtube.js queda vacío.
+for (const cs of m.content_scripts || []) if (cs.world === 'MAIN') cs.matches = cs.matches.filter((x) => x.indexOf('youtube') < 0);
+fs.writeFileSync(require('path').join(require('path').dirname(p), 'bg', 'youtube.js'), '// Sin YouTube en el paquete de las tiendas.\n');
 fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
 process.stdout.write(m.version);
 "@ $manifest

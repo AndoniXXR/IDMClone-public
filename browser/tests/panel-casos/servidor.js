@@ -143,6 +143,20 @@ const CASES = [
   { id: "subtitulos", grupo: "Archivos enteros", titulo: "<video> de 25 MB con subtítulos <track>",
     espera: "Panel de VÍDEO con «MP4 25.0 MB» y «Subtítulos: Español (vtt)».",
     tag: `<video controls src="/f/grande.mp4"><track kind="subtitles" srclang="es" label="Español" src="/subs/es.vtt" default></video>` },
+  { id: "x-spa", grupo: "Como X: la página cambia sin recargarse (2.0)", titulo: "Vídeo de X y luego la dirección cambia (history.pushState)",
+    espera: "El panel con las calidades 1280x720, 640x360 y 480x270 SIGUE sobre el vídeo después de que cambie la dirección.",
+    antes: "Antes (1.7): el panel aparecía y desaparecía al cambiar la dirección, y no volvía.",
+    run: `await req("/hls/x-normal/master.m3u8"); await sleep(50); await req("/hls/x-normal/pl/avc1/1280x720/video.m3u8"); await sleep(300); history.pushState({}, "", location.pathname + "/status/2"); log("pushState -> " + location.pathname);` },
+  { id: "x-timeline", grupo: "Como X: la página cambia sin recargarse (2.0)", titulo: "Línea de tiempo con tres vídeos (uno debajo de otro)",
+    espera: "Cada vídeo tiene SU panel, encima de él. Al desplazarte, el panel de un vídeo que sale de la pantalla se oculta y el del que entra aparece.",
+    tag: `<video controls src="/f/anuncio.mp4?n=1" id="v1"></video><div style="height:900px"></div>
+<video controls src="/f/anuncio.mp4?n=2" id="v2"></video><div style="height:900px"></div>
+<video controls src="/f/anuncio.mp4?n=3" id="v3"></video><div style="height:400px"></div>` },
+  { id: "x-recrea", grupo: "Como X: la página cambia sin recargarse (2.0)", titulo: "La página sustituye el <video> por otro igual (redibujado)",
+    espera: "El panel sigue sobre el vídeo después de que la página lo sustituya (a los 1,5 s).",
+    antes: "Antes (1.7): el panel se quedaba en el sitio del vídeo viejo o saltaba a la esquina.",
+    tag: `<div id="caja"><video controls src="/f/grande.mp4" id="v"></video></div>
+<script>setTimeout(() => { const v = document.getElementById("v"), n = document.createElement("video"); n.controls = true; n.src = v.src; n.id = "v"; v.replaceWith(n); }, 1500);</script>` },
   { id: "real", grupo: "Reproductor real (necesita internet)", titulo: "HLS real con hls.js (Big Buck Bunny, test-streams.mux.dev)",
     espera: "Panel de VÍDEO con varias calidades. Este sí se puede descargar de verdad.",
     real: true },

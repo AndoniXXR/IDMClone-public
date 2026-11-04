@@ -152,6 +152,12 @@ namespace IDMClone
                 // Lo resuelve el propio host (lee la lista con las cookies del navegador) sin abrir la ventana.
                 reply = ProbeReply(msg);
             }
+            else if (type == "ytinfo")
+            {
+                // Panel de YouTube (extensión 2.0): calidades del vídeo pedidas a la API de YouTube por el propio host
+                // (YouTube.cs), sin abrir la ventana. Misma forma que "probe" ("kind":"youtube").
+                reply = YouTubeInfoReply(msg);
+            }
             else if (type == "getconfig")
             {
                 // Opciones > Tipos de archivo: la extensión captura lo que diga IDMClone (como IDM).
@@ -236,6 +242,9 @@ namespace IDMClone
             // extensión cargada a mano desde esa carpeta ve que hay una más nueva y se recarga sola (extensión 1.5+).
             string ev = ExtensionVersionOnDisk(ExtensionFolder);
             if (ev != null) o["extVersion"] = ev;
+            // Lo que sabe hacer este IDMClone además de lo de la 1.4 (extensión 2.0): "ytinfo" = motor de YouTube (YouTube.cs).
+            // La extensión solo lo pide si lo ve aquí (un IDMClone anterior abriría su ventana con un tipo desconocido).
+            o["features"] = new List<string> { "ytinfo" };
             return new JavaScriptSerializer().Serialize(o);
         }
 
@@ -318,6 +327,12 @@ namespace IDMClone
             string url = get("url");
             if (!Util.LooksLikeUrl(url)) return Ipc.ErrorJson("URL no válida.");
             try { return DownloadEngine.ProbeMedia(ReadConfig(), url, get("cookies"), get("referrer"), get("userAgent")); }
+            catch (Exception ex) { return Ipc.ErrorJson(ex.Message); }
+        }
+
+        public static string YouTubeInfoReply(string msg)
+        {
+            try { return YouTube.InfoReply(ReadConfig(), msg); }
             catch (Exception ex) { return Ipc.ErrorJson(ex.Message); }
         }
 

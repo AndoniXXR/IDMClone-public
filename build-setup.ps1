@@ -67,6 +67,10 @@ $refs = @(
   "System.Web.Extensions.dll","System.Xml.dll","System.Security.dll",
   "System.IO.Compression.dll","System.IO.Compression.FileSystem.dll"
 ) | ForEach-Object { "/reference:`"" + (Join-Path $fw $_) + "`"" }
+# src\YouTube*.cs usa Jint: solo hace falta la referencia (el instalador no ejecuta ese código; el IDMClone.exe del
+# paquete ya lleva las DLL dentro).
+. (Join-Path $root "lib\youtube-libs.ps1")
+$refs += YouTubeLibArgs $root $fw -NoResources
 $src  = Get-ChildItem (Join-Path $root "src") -Filter *.cs | ForEach-Object { "`"" + $_.FullName + "`"" }
 $src += Get-ChildItem (Join-Path $root "setup") -Filter *.cs | ForEach-Object { "`"" + $_.FullName + "`"" }
 $out = Join-Path $dist "IDMClone-Setup.exe"

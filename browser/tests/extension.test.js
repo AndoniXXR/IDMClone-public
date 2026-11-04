@@ -8,6 +8,17 @@ const path = require("node:path");
 const EXT = path.join(__dirname, "..", "extension");
 globalThis.self = globalThis;
 const L = require(path.join(EXT, "logic.js"));
+const MANIFEST = JSON.parse(require("node:fs").readFileSync(path.join(EXT, "manifest.json"), "utf8"));
+const CONTENT_FILES = MANIFEST.content_scripts.find((c) => !c.world).js;
+function extJsFiles(dir) {
+  const fs = require("node:fs"), out = [];
+  for (const f of fs.readdirSync(path.join(EXT, dir || ""), { withFileTypes: true })) {
+    const rel = (dir ? dir + "/" : "") + f.name;
+    if (f.isDirectory()) { if (!rel.startsWith("_")) out.push(...extJsFiles(rel)); }
+    else if (f.name.endsWith(".js")) out.push(rel);
+  }
+  return out;
+}
 
 // chrome.i18n.getMessage simulado con los _locales de verdad (marcadores $NOMBRE$ -> $1..$9, como el navegador).
 function i18nFor(lang) {
@@ -276,10 +287,16 @@ test("manifiesto válido para Chromium y Firefox", () => {
   const m = require(path.join(EXT, "manifest.json"));
   assert.equal(m.manifest_version, 3);
   assert.equal(m.background.service_worker, "background.js");
-  assert.deepEqual(m.background.scripts, ["logic.js", "background.js"]);
+  // Firefox: lib/ y bg/ en orden, y background.js al final (en Chromium los carga él con importScripts).
+  assert.equal(m.background.scripts[m.background.scripts.length - 1], "background.js");
+  for (const f of ["lib/util.js", "lib/decide.js", "bg/core.js", "bg/main.js"]) assert.ok(m.background.scripts.includes(f), f);
+  assert.ok(m.background.scripts.indexOf("bg/core.js") < m.background.scripts.indexOf("bg/main.js"));
   assert.ok(m.browser_specific_settings.gecko.id);
   for (const p of ["downloads", "cookies", "nativeMessaging", "webRequest", "storage", "scripting", "activeTab"]) assert.ok(m.permissions.includes(p), p);
-  assert.deepEqual(m.content_scripts[0].js, ["logic.js", "content.js"]); // el panel de vídeo usa logic.js
+  const cs = m.content_scripts.find((c) => !c.world);
+  assert.ok(cs.all_frames && cs.run_at === "document_start");
+  assert.equal(cs.js[0], "lib/util.js");
+  for (const f of ["lib/media.js", "content/ui.js", "content/tracker.js", "content/video-panel.js", "content/bridge.js"]) assert.ok(cs.js.includes(f), f);
 });
 
 test("tipos de archivo y sitios excluidos: manda la lista de IDMClone (Opciones > Tipos de archivo)", async () => {
@@ -719,9 +736,10 @@ test("panel: audio a trozos sin ningún vídeo -> se ofrece solo tras la espera;
   // Página nueva mientras espera: el audio era de la anterior.
   t = loadBackground({ appConfig: CFG_MIN, hostReply: () => ({ ok: true }) });
   t.bg.MEDIA_TIMING.audioWait = 40;
+  t.L.onMessage({ type: "media-hello", doc: "doc-1" }, { tab: { id: 4 }, frameId: 0 }, () => {});
   t.L.headers(ranged("https://cdn.x.com/v/audio_128.mp4?bytestart=0&byteend=9", "audio/mp4", 5000000));
   await wait(15);
-  t.L.tabUpdated(4, { url: "https://videos.ejemplo.com/ver/456", status: "loading" }, { id: 4, url: "https://videos.ejemplo.com/ver/456" });
+  t.L.onMessage({ type: "media-hello", doc: "doc-2" }, { tab: { id: 4 }, frameId: 0 }, () => {});
   await wait(80);
   assert.equal(shown(t).length, 0);
 });
@@ -734,9 +752,10 @@ function big(url, ct, size) {
 }
 const tabMsgs = (t) => t.calls.filter((c) => c[0] === "tabMsg" && c[2].type === "idm-media").map((c) => c[2].entry);
 
-test("opción 3: manifiesto 1.7 sin permisos nuevos", () => {
+test("opción 3: manifiesto 2.0 sin permisos nuevos", () => {
   const m = require(path.join(EXT, "manifest.json"));
-  assert.equal(m.version, "1.7");
+  assert.equal(m.version, "2.0");
+  assert.ok(!m.permissions.includes("webNavigation"), "Los documentos nuevos los avisa content/bridge.js");
   assert.ok(!m.permissions.includes("management"), "management.getSelf no necesita el permiso");
   assert.ok(!m.permissions.includes("proxy"), "El permiso proxy no se pide (ver nota de #17)");
 });
@@ -941,8 +960,8 @@ test("opción 3: #11 al pulsar el panel, los enlaces seleccionados llegan a IDMC
   assert.equal(t.posts("links").length, 1);
 });
 
-test("opción 3: #11 el panel de selección existe en content.js y no mete HTML de la página", () => {
-  const src = require("node:fs").readFileSync(path.join(EXT, "content.js"), "utf8");
+test("opción 3: #11 el panel de selección existe en content/selection-panel.js y no mete HTML de la página", () => {
+  const src = require("node:fs").readFileSync(path.join(EXT, "content", "selection-panel.js"), "utf8");
   assert.ok(src.includes('type: "selection-links"'));
   assert.ok(src.includes("selectionPanelAllowed"));
   assert.ok(src.includes("captureOff"), "Respeta el navegador desmarcado (#1)");
@@ -1135,14 +1154,14 @@ function loadContent(appCfg, i18n, pageMedia) {
     querySelectorAll: (sel) => (sel === "video, audio" ? (pageMedia || []) : []), addEventListener() { }
   };
   const api = {
-    runtime: { id: "mi-extension", onMessage: { addListener: (f) => { onMsg = f; } }, sendMessage: (m) => { sent.push(m); return Promise.resolve({ ok: true }); } },
+    runtime: { id: "mi-extension", onMessage: { addListener: (f) => { onMsg = f; } }, sendMessage: (m) => { if (m && m.type !== "media-hello") sent.push(m); return Promise.resolve({ ok: true }); } },
     storage: { local: { get: async () => ({ appCfg }) }, onChanged: { addListener() { } } },
     i18n: i18n || I18N_ES
   };
   // logic.js (IDMLogic) busca chrome.i18n en el global de Node: el de esta página.
   globalThis.chrome = api;
   const ctx = {
-    chrome: api, document, location: { protocol: "https:", href: "https://x.com/pagina" }, IDMLogic: L,
+    chrome: api, document, location: { protocol: "https:", href: "https://x.com/pagina" }, URL,
     scrollX: 0, scrollY: 0, innerWidth: 1200, innerHeight: 800, alert() { }, getComputedStyle: () => ({ visibility: "visible", display: "block" }),
     addEventListener: (type, f) => { (win.listeners[type] = win.listeners[type] || []).push(f); },
     setTimeout: (f, ms) => { const h = setTimeout(() => { timers.delete(h); f(); }, ms); timers.add(h); return h; },
@@ -1152,7 +1171,7 @@ function loadContent(appCfg, i18n, pageMedia) {
   };
   ctx.self = ctx; ctx.window = ctx; ctx.top = ctx;
   vm.createContext(ctx);
-  vm.runInContext(require("node:fs").readFileSync(path.join(EXT, "content.js"), "utf8"), ctx);
+  for (const f of CONTENT_FILES) vm.runInContext(require("node:fs").readFileSync(path.join(EXT, f), "utf8"), ctx, { filename: f });
   return {
     sent, ctx, created, media: (entry) => onMsg({ type: "idm-media", entry }),
     winFire: (type, ev) => { for (const f of (win.listeners[type] || []).slice()) f(ev); },
@@ -1274,16 +1293,23 @@ test("IDM: 'Descargar con IDMClone' sobre la página o un marco descarga esa dir
   assert.deepEqual(t.posts("download").map((m) => m.url), ["https://x.com/doc.pdf", "https://y.com/marco.pdf"]);
 });
 
-test("IDM: navegación sin recarga (pushState) vacía el panel; un cambio de '#' no", async () => {
+test("2.0: navegar sin recarga (pushState) no borra los vídeos de la pestaña: solo un documento nuevo", async () => {
   const t = loadBackground({});
-  t.bg.tabMedia.set(5, { items: new Map([["a", {}]]), children: new Set() });
+  const hello = (doc, frameId) => t.L.onMessage({ type: "media-hello", doc }, { tab: { id: 5 }, frameId: frameId || 0 }, () => {});
+  hello("doc-1");
+  t.bg.tabMedia.get(5).items.set("a", {});
   t.L.tabUpdated(5, { url: "https://x.com/v/1", status: "loading" }, { id: 5, incognito: false });
-  t.bg.tabMedia.set(5, { items: new Map([["a", {}]]), children: new Set() });
   t.L.tabUpdated(5, { url: "https://x.com/v/1#t=10" }, { id: 5, incognito: false });
-  assert.ok(t.bg.tabMedia.has(5), "Solo cambió el '#'");
+  assert.ok(!t.calls.some((c) => c[0] === "tabMsg" && c[2].type === "idm-media-nav"), "Solo cambió el '#'");
   t.L.tabUpdated(5, { url: "https://x.com/v/2" }, { id: 5, incognito: false });
+  assert.ok(t.bg.tabMedia.get(5).items.has("a"), "pushState: los vídeos siguen (cada panel va con su <video>)");
+  assert.ok(t.calls.some((c) => c[0] === "tabMsg" && c[1] === 5 && c[2].type === "idm-media-nav" && c[3].frameId === 0));
+  hello("doc-1"); hello("otro-marco", 3);
+  assert.ok(t.bg.tabMedia.get(5).items.has("a"), "La misma ficha, o la de un iframe: nada");
+  hello("doc-2");
+  assert.ok(!t.bg.tabMedia.get(5).items.has("a"), "Documento nuevo: sus vídeos son otros");
+  t.L.tabRemoved(5);
   assert.ok(!t.bg.tabMedia.has(5));
-  assert.ok(t.calls.some((c) => c[0] === "tabMsg" && c[1] === 5 && c[2].type === "idm-media-reset"));
 });
 
 test("IDM: al instalar pone content.js en las pestañas abiertas que no lo tienen (Chromium)", async () => {
@@ -1295,7 +1321,7 @@ test("IDM: al instalar pone content.js en las pestañas abiertas que no lo tiene
     done.push([o.target.tabId, o.files.join(","), o.target.frameIds]); return [{}];
   } };
   t.L.onInstalled(); await wait(30);
-  assert.deepEqual(done, [[1, "logic.js,content.js", [0]]], "Solo donde falta: nunca dos copias en un marco");
+  assert.deepEqual(done, [[1, CONTENT_FILES.join(","), [0]]], "Solo donde falta: nunca dos copias en un marco");
   const f = loadBackground({ firefox: true, tabs: [{ id: 1, url: "https://a.com/" }] });
   let used = false;
   globalThis.browser.scripting = { executeScript: async () => { used = true; return [{}]; } };
@@ -1755,14 +1781,14 @@ test("idiomas: es (por defecto), en, zh_CN y ja con las mismas claves y marcador
 test("idiomas: todas las claves que usa el código existen, y todas las de _locales se usan", () => {
   const fs = require("node:fs");
   const es = readJson(path.join(EXT, "_locales", "es", "messages.json"));
-  const src = ["background.js", "content.js", "logic.js", "popup.js", "popup.html", "manifest.json"].map((f) => fs.readFileSync(path.join(EXT, f), "utf8")).join("\n");
+  const src = extJsFiles().concat(["popup.html", "manifest.json"]).map((f) => fs.readFileSync(path.join(EXT, f), "utf8")).join("\n");
   const used = new Set();
   for (const m of src.matchAll(/\b(?:t|T|tr)\(\s*"(\w+)"/g)) used.add(m[1]);
   for (const m of src.matchAll(/data-i18n="(\w+)"/g)) used.add(m[1]);
   for (const k of used) assert.ok(es[k], "Falta en _locales: " + k);
   for (const k of Object.keys(es)) assert.ok(src.includes('"' + k + '"') || src.includes("__MSG_" + k + "__"), "Clave sin usar: " + k);
   // Ningún texto del panel se mete como HTML (las traducciones pueden llevar comillas o "<").
-  const content = fs.readFileSync(path.join(EXT, "content.js"), "utf8");
+  const content = extJsFiles("content").map((f) => fs.readFileSync(path.join(EXT, f), "utf8")).join("\n");
   for (const html of content.match(/innerHTML\s*=\s*`[\s\S]*?`;/g) || []) assert.ok(!/\$\{(?!CSS\}|ICON\}|mini\s*\?)/.test(html), "Interpolación en innerHTML: " + html);
 });
 
@@ -1855,6 +1881,10 @@ $r | ConvertTo-Json -Depth 5 -Compress`;
       const m = JSON.parse(r[n].manifest);
       assert.equal(m.default_locale, "es", n);
       assert.equal(m.name, "__MSG_extName__", n);
+      // 2.0: las tiendas, sin YouTube (el script de página no va en youtube.com; bg/youtube.js va vacío).
+      const main = (m.content_scripts || []).find((c) => c.world === "MAIN");
+      assert.ok(main && main.matches.length && !main.matches.some((x) => /youtube/.test(x)), n + ": " + JSON.stringify(main));
+      assert.ok(r[n].entries.includes("bg/youtube.js") && r[n].entries.includes("page/hooks.js"), n);
     }
   } finally { fs.rmSync(out, { recursive: true, force: true }); }
 });

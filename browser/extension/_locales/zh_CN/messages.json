@@ -345,5 +345,9 @@
   },
   "langVi": {
     "message": "越南语"
+  },
+  "panelYtUpdate": {
+    "message": "从 YouTube 下载需要 IDMClone 1.5 或更高版本（帮助 > 检查更新）。",
+    "description": "Panel de vídeo en YouTube con un IDMClone sin motor de YouTube"
   }
 }

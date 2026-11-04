@@ -443,5 +443,9 @@
   "langVi": {
     "message": "Vietnamita",
     "description": "Nombre de idioma de unos subtítulos (panel)"
+  },
+  "panelYtUpdate": {
+    "message": "Para descargar de YouTube hace falta IDMClone 1.5 o posterior (Ayuda > Buscar actualizaciones).",
+    "description": "Panel de vídeo en YouTube con un IDMClone sin motor de YouTube"
   }
 }

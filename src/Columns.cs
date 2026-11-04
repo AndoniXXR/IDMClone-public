@@ -130,7 +130,7 @@ namespace IDMClone
             {
                 case DownloadStatus.Complete: return Lang.T("Completo");
                 case DownloadStatus.Error: return string.IsNullOrEmpty(it.Error) ? Lang.T("Error") : Lang.T("Error: " + it.Error);
-                case DownloadStatus.Connecting: return Lang.T("Conectando...");
+                case DownloadStatus.Connecting: { DownloadEngine e = it.Engine; string note = e != null ? e.StatusNote : null; return Lang.T(note ?? "Conectando..."); } // YouTube: "Preparando YouTube..."
             }
             long done = it.Downloaded;
             if (it.Size > 0 && (done > 0 || it.Status == DownloadStatus.Downloading))

@@ -129,6 +129,7 @@ namespace IDMClone.Tests
             RunNet2();
             RunIntegracion();
             RunPendiente();
+            RunYouTube();
 
             S.Stop();
             ReleaseMenuHook();   // si no, a veces sale con 0xC000041D (ver ReleaseMenuHook)
