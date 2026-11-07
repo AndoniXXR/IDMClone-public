@@ -754,7 +754,7 @@ const tabMsgs = (t) => t.calls.filter((c) => c[0] === "tabMsg" && c[2].type === 
 
 test("opción 3: manifiesto 2.0 sin permisos nuevos", () => {
   const m = require(path.join(EXT, "manifest.json"));
-  assert.equal(m.version, "2.0");
+  assert.equal(m.version, "2.0.1");
   assert.ok(!m.permissions.includes("webNavigation"), "Los documentos nuevos los avisa content/bridge.js");
   assert.ok(!m.permissions.includes("management"), "management.getSelf no necesita el permiso");
   assert.ok(!m.permissions.includes("proxy"), "El permiso proxy no se pide (ver nota de #17)");
