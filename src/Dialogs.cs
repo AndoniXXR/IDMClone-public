@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace IDMClone
@@ -25,8 +26,39 @@ namespace IDMClone
         {
             ScaleToScreen(); // por si el diálogo no llamó a EndLayout
             Lang.Apply(this);
+            // Ya tiene su dueño (ShowDialog lo pone antes de mostrarlo): sin uno a la vista, centrado en la pantalla.
+            if (Modal && !HasVisibleOwner(Handle)) { _ownerless = true; UpdateStyles(); StartPosition = FormStartPosition.CenterScreen; }
             base.OnLoad(e);
         }
+
+        // Diálogo modal sin un dueño a la vista: la ventana principal está en la bandeja o minimizada, y el foco lo tiene
+        // el navegador. Un diálogo modal desactiva todas las ventanas de IDMClone; sin botón en la barra de tareas y
+        // detrás del navegador no se veía, y IDMClone parecía congelado: no se podía pulsar nada, ni cerrar con la X (p. ej.
+        // "Enlace de descarga duplicado" al volver a pulsar en el navegador un enlace que había dado 403). Así sale en la
+        // barra de tareas, centrado en la pantalla y delante.
+        bool _ownerless;
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                if (_ownerless) cp.ExStyle |= WS_EX_APPWINDOW;
+                return cp;
+            }
+        }
+
+        static bool HasVisibleOwner(IntPtr h)
+        {
+            IntPtr o = GetWindow(h, GW_OWNER);
+            return o != IntPtr.Zero && IsWindowVisible(o) && !IsIconic(o);
+        }
+
+        const int WS_EX_APPWINDOW = 0x40000, GW_OWNER = 4;
+        [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hWnd, int cmd);
+        [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
 
         bool _scaled;
         void ScaleToScreen()
@@ -42,6 +74,8 @@ namespace IDMClone
             base.OnShown(e);
             Dpi.FitWrappedChecks(this);
             if (!Modal) CloseOnDialogResult(this);
+            // Modal y sin el foco (lo tiene el navegador): delante de todo, para que no quede escondido.
+            else if (_ownerless || GetForegroundWindow() != Handle) { TopMost = true; Activate(); TopMost = false; }
         }
 
         // Ventana no modal (Show): un botón con DialogResult (Aceptar, Cancelar, y Esc a través de CancelButton) no la

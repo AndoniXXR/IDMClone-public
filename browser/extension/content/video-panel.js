@@ -97,11 +97,26 @@
       // Con pista del sitio pero sin su vídeo en la página (otra vista previa, otra publicación, o su elemento ya
       // reproduce otro vídeo): no va al general. Solo un momento al llegar, por si su <video> aún no tiene la pista.
       if (!k && x.entry.source === "site" && x.entry.hints && x.entry.hints.length && (x.wasBound || Date.now() - (x.entry.at || 0) > RECENT_MS)) continue;
-      if (!out.has(k)) out.set(k, []);
-      out.get(k).push(x.entry);
+      // Su elemento suena sin imagen (soundOnly): al panel general, como audio.
+      const sound = !!k && T.soundOnly(T.byId(k));
+      const g = sound ? 0 : k;
+      if (!out.has(g)) out.set(g, []);
+      out.get(g).push(sound ? audioView(x.entry) : x.entry);
     }
     return out;
   }
+
+  // Lo que suena sin imagen se ofrece como audio: si trae calidades de vídeo y de audio (YouTube), solo las de audio.
+  // Cada una guarda su número en la entrada de verdad (itemIndex), que es lo que se envía al elegirla.
+  function audioView(e) {
+    if (e.media !== "video") return e;
+    const idx = [];
+    (e.items || []).forEach((it, i) => { if (it && it.kind === "audio") idx.push(i); });
+    if (!idx.length) return e;
+    return Object.assign({}, e, { media: "audio", items: idx.map((i) => e.items[i]), itemIndex: idx, viewOf: e });
+  }
+  // Una opción del panel: la entrada y el número de la calidad tal como los guardó el fondo.
+  const choice = (e, it, i) => ({ entry: e.viewOf || e, item: it, index: e.itemIndex ? e.itemIndex[i] : i });
 
   function refresh() {
     if (timer) return;
@@ -209,7 +224,7 @@
 
     function choices() {
       const out = [];
-      for (const e of list) (e.items || []).forEach((it, index) => out.push({ entry: e, item: it, index }));
+      for (const e of list) (e.items || []).forEach((it, index) => out.push(choice(e, it, index)));
       return out.concat(pageTracks());
     }
 
@@ -274,11 +289,11 @@
           menu.appendChild(n);
           continue;
         }
-        (e.items || []).forEach((it, index) => addItem(menu, { entry: e, item: it, index }));
+        (e.items || []).forEach((it, index) => addItem(menu, choice(e, it, index)));
       }
       // Subtítulos sueltos (pedidos por el reproductor o <track> del vídeo): "Subtítulos: Español (vtt)".
       const subs = [];
-      for (const e of list) if (e.media === "subtitle") (e.items || []).forEach((it, index) => subs.push({ entry: e, item: it, index }));
+      for (const e of list) if (e.media === "subtitle") (e.items || []).forEach((it, index) => subs.push(choice(e, it, index)));
       const extra = subs.concat(pageTracks());
       if (extra.length) {
         menu.appendChild(document.createElement("hr"));
@@ -348,7 +363,8 @@
 
     return {
       set(next) {
-        const k = next.map((e) => e.url).join("\n") + "|" + isMini();
+        // Con el tipo: lo que pasa de vídeo a audio (suena sin imagen) cambia el texto del botón.
+        const k = next.map((e) => e.media + " " + e.url).join("\n") + "|" + isMini();
         list = next;
         if (!host) {
           host = document.createElement("idmclone-panel");

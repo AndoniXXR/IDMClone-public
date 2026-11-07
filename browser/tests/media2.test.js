@@ -265,6 +265,41 @@ test("2.0: YouTube — el mismo <video> cambia de vídeo: el panel es solo del v
   } finally { p.stop(); }
 });
 
+test("2.0: suena sin imagen (YouTube Music, <video> de 0x0) — panel de audio arriba a la derecha, solo con el audio", async () => {
+  const p = page({});
+  try {
+    await wait(5);
+    const v = p.video({ src: "blob:https://music.youtube.com/1", rect: R(0, 0, 0, 0), paused: true });
+    await p.hint(v, "yt:CCCCCCCCCCC");
+    p.media({ url: "https://www.youtube.com/watch?v=CCCCCCCCCCC", kind: "youtube", source: "site", media: "video", hints: ["yt:CCCCCCCCCCC"], duration: 214,
+              items: [{ kind: "video", itag: 137, video: "137", ext: ".mp4", width: 1920, height: 1080 },
+                      { kind: "audio", itag: 140, audio: "140", ext: ".m4a" }, { kind: "audio", itag: 251, audio: "251", ext: ".webm" }] });
+    await p.scroll();
+    assert.equal(p.panels().length, 0, "Parado y sin imagen: nada (como un reproductor oculto cualquiera)");
+    v.paused = false;
+    await p.hint(v, "yt:CCCCCCCCCCC"); // la página avisa de nuevo (y el seguimiento repasa): ahora suena
+    const ps = p.panels();
+    assert.equal(ps.length, 1, "Suena: su panel sale");
+    assert.equal(ps[0].style.position, "fixed", "Arriba a la derecha de la ventana, como IDM (no hay reproductor encima del que ponerlo)");
+    assert.equal(ps[0]._root.querySelector(".label").textContent, ES.panelDownloadAudio.message);
+    await wait(520);
+    fire(ps[0]._root.querySelector(".main"), "click", true);
+    const items = ps[0]._root.querySelector(".menu").children.filter((c) => c.className === "item");
+    assert.equal(items.length, 3, "Los dos audios y «Acerca de este panel»: sin las calidades de vídeo");
+    fire(items[1], "click", true);
+    const sent = p.sent().filter((m) => m.type === "media-download");
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].index, 2, "Se envía el número de la calidad en la entrada de verdad (el WEBM, el tercero)");
+    assert.equal(sent[0].entry.media, "video", "La entrada que se envía es la que guardó el fondo, no la vista de audio");
+    v.rect = R(60, 100, 900, 506); // vuelve a verse (vídeo musical): el panel vuelve encima del vídeo, como vídeo
+    await p.scroll();
+    const back = p.panels();
+    assert.equal(back.length, 1);
+    assert.equal(back[0].style.position, "absolute");
+    assert.equal(back[0]._root.querySelector(".label").textContent, ES.panelDownloadVideo.message);
+  } finally { p.stop(); }
+});
+
 test("2.0: el documento manda su ficha al fondo (solo el marco principal)", async () => {
   const p = page({});
   try {

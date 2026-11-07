@@ -139,6 +139,9 @@
     const onPlay = (e) => { const r = e && e.target && recs.get(e.target); if (r) { r.playedAt = Date.now(); changed(); } };
     document.addEventListener("play", onPlay, true);
     document.addEventListener("playing", onPlay, true);
+    // Al pararse, un reproductor sin imagen deja de contar como "solo sonido" (soundOnly).
+    document.addEventListener("pause", changed, true);
+    document.addEventListener("ended", changed, true);
     addEventListener("mousemove", (e) => { mouseX = e.clientX; mouseY = e.clientY; }, { capture: true, passive: true });
     // Pistas que da el script de página de algunos sitios (page/hooks.js): un evento en el propio elemento.
     document.addEventListener("idmclone-hint", (e) => {
@@ -168,11 +171,18 @@
     return !!r && mouseX >= r.left && mouseX <= r.right && mouseY >= r.top && mouseY <= r.bottom;
   }
 
+  // ¿Se puede poner el panel encima? Se muestra y tiene un tamaño mínimo (aunque ahora esté fuera de la pantalla).
+  const hasSize = (rec) => rec.shown !== false && !!rec.rect && rec.rect.width >= 15 && rec.rect.height >= 10;
+  const playing = (el) => { try { return !el.paused && !el.ended; } catch (e) { return false; } };
+
   U.tracker = {
     records: () => [...recs.values()],
     byId: (id) => { for (const r of recs.values()) if (r.id === id) return r; return null; },
     urlsOf, underMouse, onChange: (f) => listeners.push(f), refresh: () => { scan(); }, changed, ensurePolling,
-    visible: (rec) => !!rec && !rec.gone && rec.shown !== false && rec.ratio >= VISIBLE_RATIO && !!rec.rect && rec.rect.width >= 15 && rec.rect.height >= 10,
+    visible: (rec) => !!rec && !rec.gone && rec.ratio >= VISIBLE_RATIO && hasSize(rec),
+    // Suena sin imagen: un <audio> sin reproductor a la vista, o un <video> que se reproduce sin verse (una canción en
+    // YouTube Music, radios y podcasts con un <video> oculto). Como IDM, su panel va arriba a la derecha y dice "audio".
+    soundOnly: (rec) => !!rec && !rec.gone && !hasSize(rec) && (rec.el.tagName === "AUDIO" || playing(rec.el)),
   };
   start();
 })(typeof self !== "undefined" ? self : globalThis);

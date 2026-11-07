@@ -35,6 +35,7 @@ const CASOS = {
   "mp4-anuncio": [V("video")],
   "gif-x": [V("video")],
   "mp3": ["audio: audio"],
+  "audio-oculto": { want: ["audio: audio"], panels: 1 },
   "subtitulos": [V("video"), "subtitle: subtítulos"],
   // 2.0: panels = paneles que deben verse en la página (uno por vídeo en pantalla); then = algo que hace la página después.
   "x-spa": { want: [V("1280x720", "640x360", "480x270", "audio")], panels: 1 },

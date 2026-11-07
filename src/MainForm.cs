@@ -216,6 +216,10 @@ namespace IDMClone
             if (_tray != null) _tray.ShowBalloonTip(ms, Lang.T(title), Lang.T(text), icon);
         }
 
+        // Dueño de los diálogos: la ventana principal si se ve; en la bandeja o minimizada, ninguno (DialogBase los pone
+        // entonces en la barra de tareas y delante).
+        IWin32Window DialogOwner { get { return Visible && WindowState != FormWindowState.Minimized ? this : null; } }
+
         void UiPost(MethodInvoker a)
         {
             try { if (IsHandleCreated && !IsDisposed) BeginInvoke(a); } catch { }
@@ -429,7 +433,7 @@ namespace IDMClone
             ToolStripMenuItem on = Radio(lim, "Activar", delegate { SetLimiter(true); });
             ToolStripMenuItem off = Radio(lim, "Desactivar", delegate { SetLimiter(false); });
             Sep(lim);
-            Item(lim, "Configurar...", delegate { using (SpeedLimiterForm f = new SpeedLimiterForm(_cfg)) f.ShowDialog(Visible ? this : null); UpdateStatus(); });
+            Item(lim, "Configurar...", delegate { using (SpeedLimiterForm f = new SpeedLimiterForm(_cfg)) f.ShowDialog(DialogOwner); UpdateStatus(); });
             lim.DropDownOpening += delegate { bool active = _cfg.EffectiveSpeedLimitKBps > 0; on.Checked = active; off.Checked = !active; };
             return lim;
         }
@@ -726,7 +730,7 @@ namespace IDMClone
             else
                 using (QueueNameForm f = new QueueNameForm(suggested))
                 {
-                    if (f.ShowDialog(Visible ? this : null) != DialogResult.OK) return null;
+                    if (f.ShowDialog(DialogOwner) != DialogResult.OK) return null;
                     name = f.QueueName;
                 }
             if (string.IsNullOrEmpty(name)) return null;
@@ -1230,7 +1234,7 @@ namespace IDMClone
         {
             LinkListForm l = OpenLinksWindow();
             if (l != null) BringToFront(l);
-            else Msg.Show(Visible ? this : null, "No hay ninguna ventana de enlaces abierta.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            else Msg.Show(DialogOwner, "No hay ninguna ventana de enlaces abierta.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // --- Árbol de categorías ---
@@ -1421,7 +1425,7 @@ namespace IDMClone
             FindQuery q;
             using (FindForm f = new FindForm(_find))
             {
-                if (f.ShowDialog(Visible ? this : null) != DialogResult.OK) return;
+                if (f.ShowDialog(DialogOwner) != DialogResult.OK) return;
                 q = f.Query;
             }
             if (string.IsNullOrEmpty(q.Text)) return;
@@ -1519,7 +1523,7 @@ namespace IDMClone
                     else
                         using (DuplicateForm d = new DuplicateForm(dup))
                         {
-                            if (d.ShowDialog(Visible ? this : null) != DialogResult.OK) return null;
+                            if (d.ShowDialog(DialogOwner) != DialogResult.OK) return null;
                             action = d.Action;
                             if (d.Remember) { _cfg.DuplicateAction = action; _cfg.Save(); }
                         }
@@ -1631,7 +1635,7 @@ namespace IDMClone
             _autoCancelled.Remove(host); // la próxima vez vuelven a hacer falta dos
             using (AutoCancelForm f = new AutoCancelForm(url))
             {
-                DialogResult r = AutoCancelHook != null ? AutoCancelHook(f) : f.ShowDialog(Visible ? this : null);
+                DialogResult r = AutoCancelHook != null ? AutoCancelHook(f) : f.ShowDialog(DialogOwner);
                 bool changed = false;
                 if (f.DontAskAgain) { _cfg.AskOnAutoCaptureCancel = false; changed = true; }
                 if (r == DialogResult.OK)
@@ -1729,7 +1733,7 @@ namespace IDMClone
         // Importar y "Descargar los enlaces con IDMClone" del menú contextual del Explorador.
         public LinkListForm ShowLinksFromFile(string file, string title)
         {
-            IWin32Window owner = Visible ? this : null;
+            IWin32Window owner = DialogOwner;
             List<string> urls;
             try { urls = ShellMenu.LinksInFile(file); }
             catch (Exception ex) { Msg.Show(owner, "No se pudo leer el archivo: " + ex.Message, "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); return null; }
@@ -2085,7 +2089,7 @@ namespace IDMClone
             {
                 TabControl tc = tab >= 0 ? FindTabs(f) : null;
                 if (tc != null && tab < tc.TabCount) tc.SelectedIndex = tab;
-                f.ShowDialog(Visible ? this : null);
+                f.ShowDialog(DialogOwner);
             }
             RefreshTree();
             RefreshList();
@@ -2178,7 +2182,7 @@ namespace IDMClone
             // El instalador cierra IDMClone (orden /exit) y espera a que salga; aquí se sale ya para no hacerle esperar.
             if (!Updater.Launch(installer, Application.ExecutablePath))
             {
-                Msg.Show(Visible ? this : null, "No se pudo ejecutar el instalador de la actualización.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Msg.Show(DialogOwner, "No se pudo ejecutar el instalador de la actualización.", "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             if (ExitHook != null) ExitHook(); else ExitApp();
@@ -2187,7 +2191,7 @@ namespace IDMClone
         // Ayuda: páginas HTML locales que acompañan al programa (nunca una página web).
         public void ShowHelp(string topic)
         {
-            OptionsHelp.Open(Visible ? this : null, topic);
+            OptionsHelp.Open(DialogOwner, topic);
         }
 
         public void CheckSchedule() { CheckSchedule(DateTime.Now); }
@@ -2261,7 +2265,7 @@ namespace IDMClone
                 else
                 {
                     string msg = error != null ? "No se pudo leer el archivo: " + error : "El acceso directo no lleva a una dirección web (http, https o ftp).";
-                    UiPost(delegate { Msg.Show(Visible ? this : null, msg, "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); });
+                    UiPost(delegate { Msg.Show(DialogOwner, msg, "IDMClone", MessageBoxButtons.OK, MessageBoxIcon.Warning); });
                     reply = Ipc.ErrorJson(Lang.T(msg));
                 }
             }
